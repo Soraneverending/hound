@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
 import { AislesScreen } from "@/components/screens/aisles";
-import { HuntScreen, SearchChrome } from "@/components/screens/hunt";
+import { HuntScreen } from "@/components/screens/hunt";
+import { SearchLaunch, SearchLayer } from "@/components/search-layer";
 import { PinsScreen } from "@/components/screens/pins";
 import { HoundMark } from "@/components/hound-mark";
 import { PinPulse } from "@/components/pin-pulse";
@@ -28,6 +29,7 @@ export function AppShell() {
   const tab = useHound((s) => s.tab);
   const theme = useHound((s) => s.theme);
   const setTheme = useHound((s) => s.setTheme);
+  const searchOpen = useHound((s) => s.searchOpen);
 
   useLayoutEffect(() => {
     bootFromStorage();
@@ -68,11 +70,12 @@ export function AppShell() {
   }, [theme, setTheme]);
 
   return (
-    <div className="app-shell text-ink">
+    <>
+    <div className="app-shell text-ink" inert={searchOpen ? true : undefined}>
       <PinPulse />
       <div className="app-chrome">
         {tab === "hunt" ? (
-          <SearchChrome />
+          <SearchLaunch />
         ) : (
           <div className="brand-row flex items-center justify-between gap-3 pt-3 pr-16 pb-2 pl-16">
             <div className="flex min-w-0 items-center gap-2">
@@ -97,5 +100,7 @@ export function AppShell() {
       <TabBar />
       <SnagSheet />
     </div>
+    <SearchLayer />
+    </>
   );
 }

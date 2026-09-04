@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Pin, ScanLine, Search, X } from "lucide-react";
+import { ArrowLeft, Camera, Pin, ScanLine, Search } from "lucide-react";
 import { OfferRow } from "@/components/offer-row";
 import { ProductCover } from "@/components/product-cover";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,6 @@ export function HuntScreen() {
   const result = useHound((s) => s.result);
   const hunting = useHound((s) => s.hunting);
   const status = useHound((s) => s.status);
-  const searchOpen = useHound((s) => s.searchOpen);
 
   useEffect(() => {
     if (!result) return;
@@ -58,13 +57,9 @@ export function HuntScreen() {
     if (el) el.scrollTop = 0;
   }, [result?.product.id]);
 
-  const showSuggest = searchOpen && !hunting;
-
   return (
     <div className="flex flex-col gap-4 pb-4">
-      {showSuggest ? (
-        <LiveSearchPanel />
-      ) : result ? (
+      {result ? (
         <ResultsPanel result={result} hunting={hunting} status={status} onBack={() => goHome()} />
       ) : (
         <HomePanel hunting={hunting} status={status} />
@@ -154,97 +149,7 @@ function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
   );
 }
 
-export function SearchChrome() {
-  const query = useHound((s) => s.query);
-  const setQuery = useHound((s) => s.setQuery);
-  const setSearchOpen = useHound((s) => s.setSearchOpen);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  function huntNow(q = query) {
-    const next = q.trim();
-    if (!next) return;
-    setQuery(next);
-    setSearchOpen(false);
-    void runHunt(next);
-  }
-
-  return (
-    <form
-      role="search"
-      className="bg-bg pt-2 pr-16 pb-2 pl-16"
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        huntNow();
-      }}
-    >
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-faint" />
-        <input
-          ref={inputRef}
-          type="text"
-          data-hound-search="1"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setSearchOpen(true);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onFocus={(e) => {
-            setSearchOpen(true);
-            try {
-              e.target.focus({ preventScroll: true });
-            } catch {
-              /* older webkit */
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              huntNow();
-            }
-            if (e.key === "Escape") {
-              setSearchOpen(false);
-              inputRef.current?.blur();
-            }
-          }}
-          placeholder="Name or title"
-          enterKeyHint="search"
-          inputMode="search"
-          autoCapitalize="off"
-          autoCorrect="off"
-          autoComplete="off"
-          spellCheck={false}
-          className="h-12 w-full rounded-full bg-paper pr-[4.6rem] pl-11 text-base shadow-[var(--shadow-card)] outline-none ring-ink/15 focus:ring-2"
-        />
-        {query.trim() ? (
-          <button
-            type="button"
-            aria-label="Clear"
-            onPointerDown={(e) => e.preventDefault()}
-            onClick={() => {
-              setQuery("");
-              setSearchOpen(true);
-              inputRef.current?.focus({ preventScroll: true });
-            }}
-            className="absolute top-1/2 right-16 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full text-muted"
-          >
-            <X className="size-4" />
-          </button>
-        ) : null}
-        <button
-          type="submit"
-          disabled={!query.trim()}
-          className="absolute top-1.5 right-1.5 z-10 h-9 rounded-full bg-ink px-3.5 text-sm font-medium text-accent-fg disabled:opacity-40"
-        >
-          Hunt
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function LiveSearchPanel() {
+export function LiveSearchPanel() {
   const query = useHound((s) => s.query);
   const recent = useHound((s) => s.recent ?? []);
   const hints = suggest(query, recent);
