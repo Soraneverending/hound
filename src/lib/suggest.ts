@@ -205,16 +205,25 @@ export function isAisleQuery(q: string) {
 export function suggest(query: string, recent: { q: string }[] = []): Suggestion[] {
   const raw = query.trim();
   const q = normalizeQuery(raw);
-  if (q.length < 2) return [];
   const seen = new Set<string>();
   const out: Suggestion[] = [];
 
   const push = (row: Suggestion) => {
     const key = normalizeQuery(row.q);
-    if (!key || seen.has(key) || key === q) return;
+    if (!key || seen.has(key) || (q && key === q)) return;
     seen.add(key);
     out.push(row);
   };
+
+  if (q.length < 2) {
+    for (const r of recent) {
+      push({ q: r.q, label: r.q, hint: "Recent", category: guessCategory(r.q) });
+    }
+    for (const aisle of AISLES.slice(0, 6)) {
+      aisle.items.slice(0, 1).forEach(push);
+    }
+    return out.slice(0, 8);
+  }
 
   const resolved = resolveQuery(raw);
   const rq = normalizeQuery(resolved);

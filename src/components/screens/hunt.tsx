@@ -148,7 +148,7 @@ export function SearchChrome() {
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const hints = open && query.trim().length >= 2 ? suggest(query, recent) : [];
+  const hints = open ? suggest(query, recent) : [];
 
   function huntNow(q = query) {
     const next = q.trim();
