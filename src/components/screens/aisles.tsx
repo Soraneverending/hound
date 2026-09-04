@@ -38,7 +38,7 @@ export function AislesScreen() {
   const groups = storesByKind().filter(([kind]) => KIND_LABEL[kind]);
   return (
     <div className="flex flex-col gap-8 pb-10">
-      <header>
+      <header className="pl-12">
         <p className="text-[11px] font-medium tracking-[0.18em] text-muted uppercase">
           {storeCount()} storefronts · mall · food · makeup · Shop
         </p>

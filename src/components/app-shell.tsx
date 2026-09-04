@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { AislesScreen } from "@/components/screens/aisles";
 import { HuntScreen, LiveSearchPanel } from "@/components/screens/hunt";
 import { HuntTop, SearchDock } from "@/components/search-layer";
@@ -31,6 +31,7 @@ export function AppShell() {
   const theme = useHound((s) => s.theme);
   const setTheme = useHound((s) => s.setTheme);
   const searchOpen = useHound((s) => s.searchOpen);
+  const stackRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     bootFromStorage();
@@ -49,6 +50,18 @@ export function AppShell() {
     }
     return stop;
   }, []);
+
+  useLayoutEffect(() => {
+    const el = stackRef.current;
+    if (!el) return;
+    const set = () => {
+      document.documentElement.style.setProperty("--bottom-stack-h", `${Math.round(el.getBoundingClientRect().height)}px`);
+    };
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tab, searchOpen]);
 
   useEffect(() => {
     const next = normalizeTheme(theme);
@@ -90,8 +103,10 @@ export function AppShell() {
           </Suspense>
         ) : null}
       </main>
-      {tab === "hunt" ? <SearchDock /> : null}
-      <TabBar />
+      <div className="bottom-stack" ref={stackRef}>
+        {tab === "hunt" ? <SearchDock /> : null}
+        <TabBar />
+      </div>
       <SnagSheet />
     </div>
   );

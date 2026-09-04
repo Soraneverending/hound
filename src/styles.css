@@ -129,7 +129,7 @@ html[data-theme="harbor"] {
   html,
   body {
     width: 100%;
-    height: var(--app-h, 100%);
+    height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
     background: var(--color-bg, #f3efe6);
@@ -178,15 +178,13 @@ html[data-theme="harbor"] {
 }
 
 .app-shell {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: fixed;
+  inset: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: var(--app-h, 100%);
+  height: 100%;
   max-width: 100%;
   overflow: hidden;
   background: var(--color-bg, #f3efe6);
@@ -211,7 +209,7 @@ html[data-theme="harbor"] {
   touch-action: pan-y;
   pointer-events: auto;
   overflow-anchor: none;
-  padding-bottom: 12px;
+  padding-bottom: calc(12px + var(--bottom-stack-h, 120px));
 }
 
 .app-scroll button,
@@ -227,6 +225,19 @@ html[data-theme="harbor"] {
   pointer-events: none;
   -webkit-user-drag: none;
   user-select: none;
+}
+
+.bottom-stack {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  background: var(--color-bg, #f3efe6);
+}
+
+html.hound-kb .tab-bar {
+  display: none;
 }
 
 .tab-bar {

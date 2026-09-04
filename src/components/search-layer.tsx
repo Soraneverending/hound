@@ -1,17 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { useHound } from "@/lib/hound-store";
 import { goBack, runHunt } from "@/lib/run-hunt";
-import { restoreShellSoon } from "@/lib/shell-height";
+import { kickLayout } from "@/lib/shell-height";
 
 export function HuntTop() {
   return <div className="h-2 bg-bg" />;
-}
-
-function pinPage() {
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
 }
 
 export function SearchDock() {
@@ -22,25 +16,6 @@ export function SearchDock() {
   const result = useHound((s) => s.result);
   const inputRef = useRef<HTMLInputElement>(null);
   const showBack = Boolean(searchOpen || result);
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    pinPage();
-    const vv = window.visualViewport;
-    const pin = () => pinPage();
-    vv?.addEventListener("resize", pin);
-    vv?.addEventListener("scroll", pin);
-    window.addEventListener("scroll", pin, true);
-    const t1 = window.setTimeout(pin, 50);
-    const t2 = window.setTimeout(pin, 300);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      vv?.removeEventListener("resize", pin);
-      vv?.removeEventListener("scroll", pin);
-      window.removeEventListener("scroll", pin, true);
-    };
-  }, [searchOpen]);
 
   function huntNow(q = query) {
     const next = q.trim();
@@ -55,6 +30,7 @@ export function SearchDock() {
     <form
       role="search"
       className="search-dock"
+      autoComplete="off"
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -90,11 +66,14 @@ export function SearchDock() {
           autoComplete="off"
           spellCheck={false}
           onFocus={(e) => {
+            document.documentElement.classList.add("hound-kb");
             setSearchOpen(true);
-            pinPage();
             e.currentTarget.focus({ preventScroll: true });
           }}
-          onBlur={() => restoreShellSoon()}
+          onBlur={() => {
+            document.documentElement.classList.remove("hound-kb");
+            kickLayout();
+          }}
           onChange={(e) => {
             setQuery(e.target.value);
             setSearchOpen(true);

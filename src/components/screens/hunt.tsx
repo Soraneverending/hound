@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Camera, Pin, ScanLine, Search } from "lucide-react";
 import { OfferRow } from "@/components/offer-row";
 import { ProductCover } from "@/components/product-cover";
@@ -70,9 +70,6 @@ export function HuntScreen() {
 }
 
 function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
-  const photoRef = useRef<HTMLInputElement>(null);
-  const [camKey, setCamKey] = useState(0);
-
   return (
     <>
       <header className="flex items-start justify-between gap-3 pt-1 pl-12">
@@ -88,7 +85,17 @@ function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
 
       <button
         type="button"
-        onClick={() => photoRef.current?.click()}
+        onClick={() => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "image/*";
+          input.onchange = () => {
+            const file = input.files?.[0];
+            unlockUi();
+            if (file) void runFromImage(file);
+          };
+          input.click();
+        }}
         className="flex min-h-14 items-center gap-3 rounded-2xl bg-ink px-4 text-left text-accent-fg"
       >
         <ScanLine className="size-5 shrink-0" />
@@ -98,22 +105,6 @@ function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
         </span>
         <Camera className="size-4 opacity-70" />
       </button>
-      <input
-        key={camKey}
-        ref={photoRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        tabIndex={-1}
-        aria-hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          setCamKey((n) => n + 1);
-          unlockUi();
-          if (file) void runFromImage(file);
-        }}
-      />
 
       <section>
         <p className="text-xs font-medium tracking-[0.16em] text-muted uppercase">Try a hunt</p>
