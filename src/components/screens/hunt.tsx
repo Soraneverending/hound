@@ -178,6 +178,9 @@ export function LiveSearchPanel() {
               />
               <span className="block px-3 py-2">
                 <span className="block line-clamp-2 text-sm font-medium leading-snug">{h.label}</span>
+                {h.price ? (
+                  <span className="mt-0.5 block text-sm font-medium tabular-nums">{formatMoney(h.price)}</span>
+                ) : null}
                 <span className="mt-0.5 block truncate text-[11px] text-muted">{h.hint}</span>
               </span>
             </button>
@@ -197,7 +200,6 @@ export function LiveSearchPanel() {
           <li key={h.q} className="border-b border-line last:border-b-0">
             <button
               type="button"
-              onPointerDown={(e) => e.preventDefault()}
               onClick={() => startHunt(h.q, h.image, h.category)}
               className="flex w-full items-center gap-3 px-3 py-3 text-left active:bg-desk"
             >
@@ -210,7 +212,9 @@ export function LiveSearchPanel() {
               )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">{h.label}</span>
-                <span className="block truncate text-xs text-muted">{h.hint}</span>
+                <span className="block truncate text-xs text-muted">
+                  {h.price ? `${formatMoney(h.price)} · ${h.hint}` : h.hint}
+                </span>
               </span>
             </button>
           </li>
@@ -219,7 +223,6 @@ export function LiveSearchPanel() {
           <li>
             <button
               type="button"
-              onPointerDown={(e) => e.preventDefault()}
               onClick={() => startHunt(query.trim())}
               className="flex w-full items-center gap-3 px-3 py-3 text-left active:bg-desk"
             >
@@ -338,6 +341,8 @@ function ResultsPanel({
   const aisle = isAisleQuery(result.product.name);
   const aisleItems = aisle ? suggest(result.product.name) : [];
 
+  const about = !floor && result.product.typical ? result.product.typical : 0;
+
   return (
     <div className="flex flex-col gap-5">
       <button type="button" {...pressProps(onBack)} className="flex h-11 w-max items-center gap-1 text-sm text-muted select-none">
@@ -371,6 +376,9 @@ function ResultsPanel({
                 />
                 <span className="block px-3 py-2">
                   <span className="block line-clamp-2 text-sm font-medium leading-snug">{h.label}</span>
+                  {h.price ? (
+                    <span className="mt-0.5 block text-sm font-medium tabular-nums">{formatMoney(h.price)}</span>
+                  ) : null}
                   <span className="mt-0.5 block truncate text-[11px] text-muted">{h.hint}</span>
                 </span>
               </button>
@@ -442,14 +450,16 @@ function ResultsPanel({
         <p className="text-xs font-medium tracking-[0.16em] uppercase opacity-70">
           {floor
             ? `${floor.live ? "Live" : "Search"} · ${floor.store.name}`
-            : hunting
-              ? "Sniffing live prices"
-              : people.length + shelves.length + moreKeys.length > 0
-                ? "Open a listing to see their price"
-                : "No in-stock offers"}
+            : about
+              ? "About · nearby grocers"
+              : hunting
+                ? "Sniffing live prices"
+                : people.length + shelves.length + moreKeys.length > 0
+                  ? "Open a listing to see their price"
+                  : "No in-stock offers"}
         </p>
         <p className="font-mono mt-1 text-4xl tracking-[-0.04em] tabular-nums">
-          {floor ? formatMoney(floor.total) : hunting ? "…" : "—"}
+          {floor ? formatMoney(floor.total) : about ? formatMoney(about) : hunting ? "…" : "—"}
         </p>
         {fresh && floor && fresh.id !== floor.id ? (
           <p className="mt-3 border-t border-accent-fg/15 pt-3 text-sm text-accent-fg/75">

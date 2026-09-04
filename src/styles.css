@@ -235,12 +235,15 @@ html[data-theme="harbor"] {
 
 .search-layer {
   position: fixed;
-  inset: 0;
-  z-index: 60;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
+  height: 100lvh;
+  min-height: 100lvh;
   overflow: hidden;
   background: var(--color-bg, #f3efe6);
   color: var(--color-ink, #161410);
@@ -254,6 +257,12 @@ html[data-theme="harbor"] {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 1rem 1.25rem 1.5rem;
+}
+
+html.hound-searching .tab-bar,
+html.hound-searching .app-shell {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 [data-hound-search="1"] {

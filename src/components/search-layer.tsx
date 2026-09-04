@@ -7,20 +7,21 @@ import { runHunt } from "@/lib/run-hunt";
 
 export function SearchLaunch() {
   const setSearchOpen = useHound((s) => s.setSearchOpen);
-  const setQuery = useHound((s) => s.setQuery);
+  const query = useHound((s) => s.query);
+  const result = useHound((s) => s.result);
+  const label = query.trim() || result?.product.name || "Name or title";
+  const idle = !query.trim() && !result;
+
   return (
     <div className="bg-bg pt-2 pr-16 pb-2 pl-16">
       <button
         type="button"
         data-hound-search-launch="1"
-        onClick={() => {
-          setQuery("");
-          setSearchOpen(true);
-        }}
+        onClick={() => setSearchOpen(true)}
         className="flex h-12 w-full items-center gap-3 rounded-full bg-paper px-4 text-left shadow-[var(--shadow-card)]"
       >
         <Search className="size-4 shrink-0 text-faint" />
-        <span className="text-base text-faint">Name or title</span>
+        <span className={`min-w-0 flex-1 truncate text-base ${idle ? "text-faint" : ""}`}>{label}</span>
       </button>
     </div>
   );
@@ -38,6 +39,11 @@ export function SearchLayer() {
     if (vk) vk.overlaysContent = true;
   }, []);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle("hound-searching", open);
+    return () => document.documentElement.classList.remove("hound-searching");
+  }, [open]);
+
   useLayoutEffect(() => {
     if (!open) return;
     const el = inputRef.current;
@@ -51,7 +57,7 @@ export function SearchLayer() {
 
   function close() {
     inputRef.current?.blur();
-    window.setTimeout(() => setSearchOpen(false), 50);
+    setSearchOpen(false);
   }
 
   function huntNow(q = query) {
@@ -67,25 +73,26 @@ export function SearchLayer() {
 
   return createPortal(
     <div className="search-layer" role="dialog" aria-label="Search">
-      <form
-        role="search"
-        className="bg-bg pt-2 pr-16 pb-2 pl-16"
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          huntNow();
-        }}
-      >
-        <div className="relative">
-          <button
-            type="button"
-            aria-label="Close search"
-            onPointerDown={(e) => e.preventDefault()}
-            onClick={close}
-            className="absolute top-1.5 left-1.5 z-10 grid size-9 place-items-center rounded-full text-muted"
-          >
-            <ArrowLeft className="size-4" />
-          </button>
+      <div className="flex items-center gap-2 bg-bg pt-2 pr-16 pb-2 pl-16">
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={close}
+          className="flex h-11 shrink-0 items-center gap-1 rounded-full px-2 text-sm font-medium"
+        >
+          <ArrowLeft className="size-5" />
+          Back
+        </button>
+        <form
+          role="search"
+          className="relative min-w-0 flex-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            huntNow();
+          }}
+        >
+          <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-faint" />
           <input
             ref={inputRef}
             type="text"
@@ -112,7 +119,6 @@ export function SearchLayer() {
             <button
               type="button"
               aria-label="Clear"
-              onPointerDown={(e) => e.preventDefault()}
               onClick={() => {
                 setQuery("");
                 inputRef.current?.focus({ preventScroll: true });
@@ -123,14 +129,15 @@ export function SearchLayer() {
             </button>
           ) : null}
           <button
-            type="submit"
+            type="button"
             disabled={!query.trim()}
+            onClick={() => huntNow()}
             className="absolute top-1.5 right-1.5 z-10 h-9 rounded-full bg-ink px-3.5 text-sm font-medium text-accent-fg disabled:opacity-40"
           >
             Hunt
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
       <div className="search-layer-scroll">
         <LiveSearchPanel />
       </div>

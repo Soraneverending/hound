@@ -8,6 +8,8 @@ export type Suggestion = {
   hint: string;
   image?: string;
   category: Category;
+  price?: number;
+  store?: string;
 };
 
 const AISLES: { keys: string[]; items: Suggestion[] }[] = [
@@ -25,20 +27,20 @@ const AISLES: { keys: string[]; items: Suggestion[] }[] = [
   {
     keys: ["cereal", "ceral", "cheerios", "frosted", "flakes", "kellogg", "breakfast", "bran", "raisin"],
     items: [
-      { q: "Honey Nut Cheerios", label: "Honey Nut Cheerios", hint: "Vons vs Costco", image: "/covers/cheerios.jpg", category: "groceries" },
-      { q: "Kellogg's Frosted Flakes", label: "Frosted Flakes", hint: "Vons · Walmart · Costco", image: "https://world.openfoodfacts.org/images/products/003/800/084/5217/front_en.4.400.jpg", category: "groceries" },
-      { q: "Cinnamon Toast Crunch", label: "Cinnamon Toast Crunch", hint: "Target · Vons", image: "https://world.openfoodfacts.org/images/products/001/600/014/3167/front_en.14.400.jpg", category: "groceries" },
-      { q: "Lucky Charms", label: "Lucky Charms", hint: "Walmart · Costco", image: "https://world.openfoodfacts.org/images/products/001/600/014/3174/front_en.6.400.jpg", category: "groceries" },
-      { q: "Cap'n Crunch", label: "Cap'n Crunch", hint: "Walmart · Vons", category: "groceries" },
+      { q: "Honey Nut Cheerios", label: "Honey Nut Cheerios", hint: "Vons vs Costco", image: "/covers/cheerios.jpg", category: "groceries", price: 4.79 },
+      { q: "Kellogg's Frosted Flakes", label: "Frosted Flakes", hint: "Vons · Walmart · Costco", image: "https://world.openfoodfacts.org/images/products/003/800/084/5217/front_en.4.400.jpg", category: "groceries", price: 4.49 },
+      { q: "Cinnamon Toast Crunch", label: "Cinnamon Toast Crunch", hint: "Target · Vons", image: "https://world.openfoodfacts.org/images/products/001/600/014/3167/front_en.14.400.jpg", category: "groceries", price: 4.98 },
+      { q: "Lucky Charms", label: "Lucky Charms", hint: "Walmart · Costco", image: "https://world.openfoodfacts.org/images/products/001/600/014/3174/front_en.6.400.jpg", category: "groceries", price: 4.64 },
+      { q: "Cap'n Crunch", label: "Cap'n Crunch", hint: "Walmart · Vons", category: "groceries", price: 3.98 },
     ],
   },
   {
     keys: ["yogurt", "yoghurt", "chobani", "fage", "yoplait", "greek yogurt", "dairy"],
     items: [
-      { q: "Chobani Greek Yogurt", label: "Chobani Greek Yogurt", hint: "Vons · Ralphs · Target", image: "https://world.openfoodfacts.org/images/products/089/421/200/1366/front_en.10.400.jpg", category: "groceries" },
-      { q: "Fage Total 5% yogurt", label: "Fage Total 5%", hint: "Whole Foods · Vons", category: "groceries" },
-      { q: "Yoplait Original yogurt", label: "Yoplait Original", hint: "Stater Bros · Walmart", category: "groceries" },
-      { q: "Siggi's Icelandic yogurt", label: "Siggi's", hint: "Trader Joe's · Target", category: "groceries" },
+      { q: "Chobani Greek Yogurt", label: "Chobani Greek Yogurt", hint: "Vons · Ralphs · Target", image: "https://world.openfoodfacts.org/images/products/089/421/200/1366/front_en.10.400.jpg", category: "groceries", price: 5.49 },
+      { q: "Fage Total 5% yogurt", label: "Fage Total 5%", hint: "Whole Foods · Vons", category: "groceries", price: 6.29 },
+      { q: "Yoplait Original yogurt", label: "Yoplait Original", hint: "Stater Bros · Walmart", category: "groceries", price: 3.29 },
+      { q: "Siggi's Icelandic yogurt", label: "Siggi's", hint: "Trader Joe's · Target", category: "groceries", price: 1.99 },
     ],
   },
   {
@@ -212,7 +214,16 @@ export function suggest(query: string, recent: { q: string }[] = []): Suggestion
     const key = normalizeQuery(row.q);
     if (!key || seen.has(key) || (q && key === q)) return;
     seen.add(key);
-    out.push(row);
+    const product = PRODUCTS.find((p) => {
+      const hay = normalizeQuery(`${p.name} ${p.aliases.join(" ")}`);
+      return hay.includes(key) || key.includes(normalizeQuery(p.name));
+    });
+    out.push({
+      ...row,
+      image: row.image || product?.image,
+      price: row.price ?? product?.typical,
+      store: row.store,
+    });
   };
 
   if (q.length < 2) {
