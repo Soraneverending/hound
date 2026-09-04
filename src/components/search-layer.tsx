@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { useHound } from "@/lib/hound-store";
 import { goBack, runHunt } from "@/lib/run-hunt";
+import { restoreShellSoon } from "@/lib/shell-height";
 
 export function HuntTop() {
   return <div className="h-2 bg-bg" />;
@@ -93,6 +94,7 @@ export function SearchDock() {
             pinPage();
             e.currentTarget.focus({ preventScroll: true });
           }}
+          onBlur={() => restoreShellSoon()}
           onChange={(e) => {
             setQuery(e.target.value);
             setSearchOpen(true);

@@ -11,6 +11,7 @@ import { TabBar } from "@/components/tab-bar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { THEMES, normalizeTheme } from "@/lib/themes";
 import { useHound } from "@/lib/hound-store";
+import { watchShellHeight } from "@/lib/shell-height";
 
 const BoardScreen = lazy(async () => {
   const mod = await import("@/components/screens/board");
@@ -35,6 +36,7 @@ export function AppShell() {
     bootFromStorage();
     const vk = (navigator as Navigator & { virtualKeyboard?: { overlaysContent: boolean } }).virtualKeyboard;
     if (vk) vk.overlaysContent = true;
+    const stop = watchShellHeight();
     const w = window as Window & { __houndReady?: boolean; __houndTaps?: { x: number; y: number }[] };
     w.__houndReady = true;
     const tap = w.__houndTaps?.splice(0).at(-1);
@@ -45,6 +47,7 @@ export function AppShell() {
         if (btn instanceof HTMLElement) btn.click();
       });
     }
+    return stop;
   }, []);
 
   useEffect(() => {
