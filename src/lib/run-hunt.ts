@@ -44,10 +44,6 @@ export function goBack() {
 }
 
 export function requestBack() {
-  if (typeof window !== "undefined" && window.history.state?.hound) {
-    window.history.back();
-    return;
-  }
   goBack();
 }
 

@@ -1,9 +1,8 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useLayoutEffect, useRef } from "react";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { LiveSearchPanel } from "@/components/screens/hunt";
 import { useHound } from "@/lib/hound-store";
-import { requestBack, runHunt } from "@/lib/run-hunt";
+import { goBack, runHunt } from "@/lib/run-hunt";
 
 export function SearchLaunch() {
   const setSearchOpen = useHound((s) => s.setSearchOpen);
@@ -18,7 +17,7 @@ export function SearchLaunch() {
         <button
           type="button"
           aria-label="Back"
-          onClick={() => requestBack()}
+          onClick={() => goBack()}
           className="flex h-11 shrink-0 items-center gap-1 rounded-full px-1 text-sm font-medium"
         >
           <ArrowLeft className="size-5" />
@@ -38,25 +37,13 @@ export function SearchLaunch() {
   );
 }
 
-export function SearchLayer() {
-  const open = useHound((s) => s.searchOpen);
+export function SearchPage() {
   const query = useHound((s) => s.query);
   const setQuery = useHound((s) => s.setQuery);
   const setSearchOpen = useHound((s) => s.setSearchOpen);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const vk = (navigator as Navigator & { virtualKeyboard?: { overlaysContent: boolean } }).virtualKeyboard;
-    if (vk) vk.overlaysContent = true;
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("hound-searching", open);
-    return () => document.documentElement.classList.remove("hound-searching");
-  }, [open]);
-
   useLayoutEffect(() => {
-    if (!open) return;
     const el = inputRef.current;
     if (!el) return;
     try {
@@ -64,95 +51,89 @@ export function SearchLayer() {
     } catch {
       el.focus();
     }
-  }, [open]);
-
-  function close() {
-    inputRef.current?.blur();
-    requestBack();
-  }
+  }, []);
 
   function huntNow(q = query) {
     const next = q.trim();
     if (!next) return;
     setQuery(next);
-    inputRef.current?.blur();
     setSearchOpen(false);
+    elBlur();
     void runHunt(next);
   }
 
-  if (!open || typeof document === "undefined") return null;
+  function elBlur() {
+    inputRef.current?.blur();
+  }
 
-  return createPortal(
-    <div className="search-layer" role="dialog" aria-label="Search">
-      <div className="flex items-center gap-2 bg-bg pt-2 pr-16 pb-2 pl-16">
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={close}
-          className="flex h-11 shrink-0 items-center gap-1 rounded-full px-2 text-sm font-medium"
-        >
-          <ArrowLeft className="size-5" />
-          Back
-        </button>
+  return (
+    <>
+      <div className="app-chrome">
         <form
           role="search"
-          className="relative min-w-0 flex-1"
+          className="flex items-center gap-2 bg-bg pt-2 pr-16 pb-2 pl-16"
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
             huntNow();
           }}
         >
-          <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-faint" />
-          <input
-            ref={inputRef}
-            type="text"
-            data-hound-search="1"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                huntNow();
-              }
-              if (e.key === "Escape") close();
-            }}
-            placeholder="Name or title"
-            enterKeyHint="search"
-            inputMode="search"
-            autoCapitalize="off"
-            autoCorrect="off"
-            autoComplete="off"
-            spellCheck={false}
-            className="h-12 w-full rounded-full bg-paper pr-[4.6rem] pl-11 text-base shadow-[var(--shadow-card)] outline-none ring-ink/15 focus:ring-2"
-          />
-          {query.trim() ? (
-            <button
-              type="button"
-              aria-label="Clear"
-              onClick={() => {
-                setQuery("");
-                inputRef.current?.focus({ preventScroll: true });
-              }}
-              className="absolute top-1/2 right-16 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full text-muted"
-            >
-              <X className="size-4" />
-            </button>
-          ) : null}
           <button
             type="button"
-            disabled={!query.trim()}
-            onClick={() => huntNow()}
-            className="absolute top-1.5 right-1.5 z-10 h-9 rounded-full bg-ink px-3.5 text-sm font-medium text-accent-fg disabled:opacity-40"
+            aria-label="Back"
+            onClick={() => {
+              elBlur();
+              goBack();
+            }}
+            className="flex h-11 shrink-0 items-center gap-1 rounded-full px-1 text-sm font-medium"
           >
-            Hunt
+            <ArrowLeft className="size-5" />
+            Back
           </button>
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-faint" />
+            <input
+              ref={inputRef}
+              type="text"
+              inputMode="search"
+              enterKeyHint="search"
+              data-hound-search="1"
+              value={query}
+              placeholder="Name or title"
+              autoCapitalize="off"
+              autoCorrect="off"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-12 w-full rounded-full bg-paper pr-[4.6rem] pl-11 text-base shadow-[var(--shadow-card)] outline-none ring-ink/15 focus:ring-2"
+            />
+            {query.trim() ? (
+              <button
+                type="button"
+                aria-label="Clear"
+                onClick={() => {
+                  setQuery("");
+                  inputRef.current?.focus({ preventScroll: true });
+                }}
+                className="absolute top-1/2 right-16 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full text-muted"
+              >
+                <X className="size-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={!query.trim()}
+              onClick={() => huntNow()}
+              className="absolute top-1.5 right-1.5 z-10 h-9 rounded-full bg-ink px-3.5 text-sm font-medium text-accent-fg disabled:opacity-40"
+            >
+              Hunt
+            </button>
+          </div>
         </form>
       </div>
-      <div className="search-layer-scroll">
+      <main className="app-scroll min-h-0 flex-1 overflow-y-auto px-5 pt-4">
         <LiveSearchPanel />
-      </div>
-    </div>,
-    document.body,
+      </main>
+    </>
   );
 }
