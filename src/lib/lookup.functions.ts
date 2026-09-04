@@ -121,6 +121,48 @@ async function wikiIdentify(query: string): Promise<{
   };
 }
 
+async function identifyText(query: string): Promise<{ name: string; brand?: string; category?: string } | null> {
+  const apiKey = process.env.XAI_API_KEY;
+  if (!apiKey) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "grok-4.5",
+        max_tokens: 120,
+        temperature: 0,
+        messages: [
+          {
+            role: "user",
+            content:
+              'Name this product for a price app. JSON only: {"name":"","brand":"","category":"games|groceries|clothes|electronics|pharmacy|home|books|collectibles|cars|beauty"}. Card sleeves, deck boxes, playmats, binders, TCG supplies = collectibles, never games. Manga/comics/novels = books, never games. LEGO/toys = home, never games. Only "games" if it is a video game sold on Steam or consoles. Food = groceries. Keep the shopper\'s wording. Do not invent a different product. Query: ' +
+              JSON.stringify(query),
+          },
+        ],
+      }),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const match = (body.choices?.[0]?.message?.content ?? "").match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]) as { name?: string; brand?: string; category?: string };
+    const name = (parsed.name || "").trim();
+    if (!name || /^(this frame|unknown|photo|item|product)$/i.test(name)) return null;
+    return { name, brand: parsed.brand || undefined, category: parsed.category || undefined };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export const enrichHunt = createServerFn({ method: "POST" })
   .validator((input: { query: string; category?: string }) => input)
   .handler(async ({ data }): Promise<{ extra: Offer[]; identified: { name: string; upc?: string } | null; image?: string; candidates?: { name: string; image?: string; hint: string }[]; category?: string }> => {
@@ -132,23 +174,33 @@ export const enrichHunt = createServerFn({ method: "POST" })
     const q = data.query.trim();
     if (!q) return { extra, identified };
 
-    const cat = data.category ?? "";
+    const catHint = category ?? "";
     const digits = q.replace(/\D/g, "");
     const isIsbn = /^(97[89])\d{10}$/.test(digits);
     const isUpc = /^\d{8,14}$/.test(q) && !isIsbn;
     const tcg = isTradingCard(q);
     const poke = /pokemon|pokémon|charizard|pikachu|vmax/i.test(q);
-    const bookish = cat === "books" || isIsbn || isBookQuery(q);
-    const grocery = cat === "groceries" || looksGrocery(q);
-    const tryGames = !tcg && !isToyQuery(q) && (cat === "games" || isGameQuery(q));
+    const bookish = catHint === "books" || isIsbn || isBookQuery(q);
+    const grocery = catHint === "groceries" || looksGrocery(q);
+    const tryGames = !tcg && !isToyQuery(q) && (catHint === "games" || isGameQuery(q));
     const tryBooks = !tcg && !isUpc && !isAisleQuery(q);
     const tryFood =
       !tcg &&
       !isUpc &&
       !isAisleQuery(q) &&
-      (grocery || cat === "beauty" || cat === "pharmacy" || cat === "home" || (!tryGames && !bookish));
+      (grocery || catHint === "beauty" || catHint === "pharmacy" || catHint === "home" || (!tryGames && !bookish));
 
     const jobs: Promise<void>[] = [];
+
+    if (!isUpc && !isAisleQuery(q) && !tcg && !isGameQuery(q) && !isBookQuery(q) && !looksGrocery(q) && !isToyQuery(q)) {
+      jobs.push(
+        identifyText(q).then((named) => {
+          if (!named) return;
+          if (named.name) identified ??= { name: named.name };
+          if (named.category && !isTradingCard(q)) category = named.category;
+        }),
+      );
+    }
 
     if (!isAisleQuery(q) && !isUpc) {
       jobs.push(
@@ -156,7 +208,7 @@ export const enrichHunt = createServerFn({ method: "POST" })
           if (!row) return;
           if (row.image) image ??= row.image;
           if (row.name) identified ??= { name: row.name };
-          if (row.category) category = row.category;
+          if (row.category && !isTradingCard(q)) category = row.category;
         }),
       );
     }
@@ -168,16 +220,16 @@ export const enrichHunt = createServerFn({ method: "POST" })
           if (row.image) image ??= row.image;
           if (row.identified && nameFits(q, row.identified)) {
             identified ??= { name: row.identified };
-            if (cat === "games" || isGameQuery(q)) category = "games";
+            if (catHint === "games" || isGameQuery(q)) category = "games";
           }
-          if (row.candidates.length && (cat === "games" || isGameQuery(q))) candidates = row.candidates;
+          if (row.candidates.length && (catHint === "games" || isGameQuery(q))) candidates = row.candidates;
         }),
         steamOffer(q).then((row) => {
           if (row.offer) extra.push(row.offer);
           if (row.image) image ??= row.image;
           if (row.identified && nameFits(q, row.identified)) {
             identified ??= { name: row.identified };
-            if (cat === "games" || isGameQuery(q)) category = "games";
+            if (catHint === "games" || isGameQuery(q)) category = "games";
           }
         }),
       );
@@ -230,12 +282,12 @@ export const enrichHunt = createServerFn({ method: "POST" })
     } else if (tryFood) {
       jobs.push(
         (async () => {
-          const hit = await searchFacts(q, cat || "groceries");
+          const hit = await searchFacts(q, catHint || "groceries");
           if (!hit) return;
           if (!nameFits(q, hit.name)) return;
           identified ??= hit;
           if (hit.image) image ??= hit.image;
-          category ??= grocery ? "groceries" : cat || undefined;
+          category ??= grocery ? "groceries" : catHint || undefined;
           if (hit.upc) {
             const priced = await productFacts(hit.upc);
             if (priced?.offers) extra.push(...priced.offers);
@@ -248,7 +300,7 @@ export const enrichHunt = createServerFn({ method: "POST" })
 
     await Promise.allSettled(jobs);
     if (!image && !isAisleQuery(q)) {
-      const cover = await coverFallback(q, category || cat || (isGameQuery(q) ? "games" : isBookQuery(q) ? "books" : isToyQuery(q) ? "home" : ""));
+      const cover = await coverFallback(q, category || catHint || (isGameQuery(q) ? "games" : isBookQuery(q) ? "books" : isToyQuery(q) ? "home" : ""));
       if (cover) image = cover;
     }
     return { extra, identified, image: httpsUrl(image), candidates, category };

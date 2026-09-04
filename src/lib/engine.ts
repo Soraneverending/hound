@@ -81,86 +81,31 @@ function shippingFor(storeId: string, price: number, cond: Condition): number {
 export function generateOffers(product: Product): Offer[] {
   if (isTradingCard(`${product.brand} ${product.name}`)) return [];
   const blob = `${product.brand} ${product.name}`;
-  const list = storesFor(product.category, blob);
-  const honestSearch =
-    product.ephemeral ||
-    product.category === "games" ||
-    product.category === "groceries" ||
-    product.category === "collectibles" ||
-    product.category === "books" ||
-    isToyQuery(blob);
-  if (honestSearch) {
-    return list.map((store) => {
-      const person = store.kind === "marketplace" || store.kind === "shop";
-      return {
-        id: `${product.id}:${store.id}:search`,
-        storeId: store.id,
-        price: 0,
-        shipping: 0,
-        condition: person ? "used" : "new",
-        stock: "in" as const,
-        searchOnly: true,
-        authentic: true,
-        url: listingUrl(store.id, product.name),
-        image: product.image,
-        note: person
-          ? "Person-to-person — open to see their price"
-          : store.kind === "grocery" || store.kind === "club" || store.kind === "pharmacy"
-            ? "Search this grocer"
-            : store.kind === "digital"
-              ? "Search this storefront"
-              : store.kind === "thrift"
-                ? "Thrift is one-of-one — look, don't trust a made-up tag"
-                : "Search this shelf",
-      };
-    });
-  }
+  let list = storesFor(product.category, blob);
+  const realGame = product.category === "games" && isGameQuery(blob);
+  if (!realGame) list = list.filter((store) => store.kind !== "digital");
   return list.map((store) => {
-    const storeId = store.id;
-    const bias = store.bias ?? 1;
-    const jitter = 0.92 + unit(`p:${product.id}:${storeId}`) * 0.16;
-    const cond = conditionFor(storeId, product.category, product.id);
-    let price = product.typical * bias * jitter;
-    if (cond === "used") price *= 0.78;
-    if (cond === "like-new") price *= 0.88;
-    if (cond === "open-box") price *= 0.84;
-    if (product.category === "groceries" && (storeId === "costco" || storeId === "sams" || storeId === "aldi" || storeId === "winco")) {
-      price *= 0.85;
-    }
-    price = money(Math.max(0.25, price));
-    const knockoff = (storeId === "aliexpress" || storeId === "temu" || storeId === "shein") && product.category !== "groceries" && unit(`a:${product.id}:${storeId}`) > 0.35;
-    const authentic = !knockoff;
-    const stock = authentic ? stockFor(storeId, product.id) : "in";
-    const shipping = shippingFor(storeId, price, cond);
-    const note =
-      !authentic
-        ? "Third-party listing — confirm authenticity"
-        : storeId === "costco" || storeId === "sams"
-          ? "Club price, membership required"
-          : store.kind === "thrift"
-            ? "One-of-one thrift — go look"
-            : storeId === "shop"
-              ? "Independent merchant on Shop"
-              : storeId === "tiktokshop"
-                ? "Creator storefront"
-                : store.kind === "mall"
-                  ? "Mall tenant · Santa Anita / West Covina"
-                  : storeId === "offerup" || storeId === "craigslist" || storeId === "fbmarket"
-                    ? "Local pickup in Glendora"
-                    : storeId === "realreal"
-                      ? "Authenticated consignment"
-                      : undefined;
+    const person = store.kind === "marketplace" || store.kind === "shop";
     return {
-      id: `${product.id}:${storeId}`,
-      storeId,
-      price,
-      shipping,
-      condition: cond,
-      stock,
-      note,
-      authentic,
-      url: listingUrl(storeId, product.name),
+      id: `${product.id}:${store.id}:search`,
+      storeId: store.id,
+      price: 0,
+      shipping: 0,
+      condition: person ? "used" : "new",
+      stock: "in" as const,
+      searchOnly: true,
+      authentic: true,
+      url: listingUrl(store.id, product.name),
       image: product.image,
+      note: person
+        ? "Person-to-person — open to see their price"
+        : store.kind === "grocery" || store.kind === "club" || store.kind === "pharmacy"
+          ? "Search this grocer"
+          : store.kind === "digital"
+            ? "Search this storefront"
+            : store.kind === "thrift"
+              ? "Thrift is one-of-one — look, don't trust a made-up tag"
+              : "Search this shelf",
     };
   });
 }
@@ -171,12 +116,14 @@ export function rankOffers(
   opts?: { paypalOnly?: boolean; inStock?: boolean; pickupOnly?: boolean; newOnly?: boolean },
 ): RankedOffer[] {
   const allowed = new Set(storesFor(product.category, `${product.brand} ${product.name}`).map((s) => s.id));
+  const realGame = product.category === "games" && isGameQuery(`${product.brand} ${product.name}`);
   const merged = new Map<string, Offer>();
   for (const offer of generateOffers(product)) {
     merged.set(`${offer.storeId}:${offer.condition}`, offer);
   }
   for (const offer of extra) {
     if (!allowed.has(offer.storeId)) continue;
+    if (!realGame && STORE_MAP[offer.storeId]?.kind === "digital") continue;
     const key = `${offer.storeId}:${offer.condition}`;
     const prev = merged.get(key);
     if (!prev || offer.live || offer.price + offer.shipping < prev.price + prev.shipping) {
