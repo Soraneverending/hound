@@ -171,14 +171,31 @@ export function SearchChrome() {
           }}
           onFocus={(e) => {
             setOpen(true);
+            document.documentElement.classList.add("hound-search-focus");
             try {
               e.target.focus({ preventScroll: true });
             } catch {
               /* older webkit */
             }
             window.scrollTo(0, 0);
+            const sc = document.querySelector(".app-scroll");
+            if (sc instanceof HTMLElement) sc.scrollTop = 0;
           }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            // iOS: take focus ourselves with preventScroll so WKWebView is less eager to pan.
+            if (e.pointerType === "touch" || e.pointerType === "pen") {
+              e.preventDefault();
+              const el = inputRef.current;
+              if (el && document.activeElement !== el) {
+                try {
+                  el.focus({ preventScroll: true });
+                } catch {
+                  el.focus();
+                }
+              }
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key !== "Enter") return;
             e.preventDefault();
@@ -188,6 +205,7 @@ export function SearchChrome() {
             const next = e.relatedTarget;
             if (next instanceof Node && boxRef.current?.contains(next)) return;
             window.setTimeout(() => setOpen(false), 120);
+            document.documentElement.classList.remove("hound-search-focus");
             window.scrollTo(0, 0);
             const sc = document.querySelector(".app-scroll");
             if (sc instanceof HTMLElement) sc.scrollTop = 0;
