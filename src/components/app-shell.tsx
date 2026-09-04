@@ -105,6 +105,22 @@ export function AppShell() {
     };
   }, []);
 
+  useLayoutEffect(() => {
+    const shell = document.querySelector(".app-shell");
+    const chrome = document.querySelector(".app-chrome");
+    const tabs = document.querySelector(".tab-bar");
+    if (!(shell instanceof HTMLElement)) return;
+    const apply = () => {
+      if (chrome instanceof HTMLElement) shell.style.setProperty("--chrome-h", `${chrome.offsetHeight}px`);
+      if (tabs instanceof HTMLElement) shell.style.setProperty("--tabs-h", `${tabs.offsetHeight}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    if (chrome) ro.observe(chrome);
+    if (tabs) ro.observe(tabs);
+    return () => ro.disconnect();
+  }, [tab]);
+
   useEffect(() => {
     const next = normalizeTheme(theme);
     if (next !== theme) setTheme(next);
