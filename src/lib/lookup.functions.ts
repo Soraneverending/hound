@@ -65,7 +65,11 @@ function nameFits(query: string, name?: string) {
   const tokens = q.split(" ").filter((w) => w.length > 2);
   if (tokens.length === 0) return n.includes(q);
   const hits = tokens.filter((t) => n.includes(t)).length;
-  return hits >= Math.ceil(tokens.length * 0.7);
+  if (hits < Math.ceil(tokens.length * 0.7)) return false;
+  const stop = new Set(["the", "and", "with", "from", "pack", "box", "bag", "ounce", "ounces", "original", "classic", "family", "size", "count", "flavor"]);
+  const must = tokens.filter((t) => t.length >= 7 && !stop.has(t));
+  if (must.length && !must.every((t) => n.includes(t))) return false;
+  return true;
 }
 
 function categoryFromBlurb(text: string): string | undefined {
@@ -109,10 +113,7 @@ async function wikiIdentify(query: string): Promise<{
   }
   if (!summary?.title) return null;
   const blob = `${summary.title} ${summary.description ?? ""} ${summary.extract ?? ""}`;
-  const qn = query.toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const tn = summary.title.toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const close = nameFits(query, summary.title) || (qn.length >= 4 && tn.includes(qn)) || (tn.length >= 4 && qn.includes(tn));
-  if (!close && !nameFits(query, blob)) return null;
+  if (!nameFits(query, summary.title) && !nameFits(query, blob)) return null;
   return {
     name: summary.title,
     category: categoryFromBlurb(blob),
@@ -172,8 +173,9 @@ const SHELF_IDS = new Set([
   "vons",
   "ralphs",
   "costco",
-  "samsclub",
+  "sams",
   "staterbros",
+  "stater",
   "cvs",
   "walgreens",
   "amazon",
@@ -190,7 +192,7 @@ const SHELF_IDS = new Set([
   "macys",
 ]);
 
-async function huntShelfPrices(query: string, category: string): Promise<Offer[]> {
+async function huntShelfPrices(query: string, category: string, place = "Glendora CA 91741"): Promise<Offer[]> {
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) return [];
   const ctrl = new AbortController();
@@ -210,11 +212,13 @@ async function huntShelfPrices(query: string, category: string): Promise<Offer[]
           {
             role: "user",
             content:
-              'JSON only: {"offers":[{"store":"vons","price":4.99}]}. Typical current US retail near Glendora CA 91741 for ' +
+              'JSON only: {"offers":[{"store":"vons","price":4.99}]}. Typical current US retail near ' +
+              JSON.stringify(place) +
+              " for EXACT product " +
               JSON.stringify(query) +
               " (" +
               (category || "product") +
-              "). Only stores that actually sell THIS item. store must be one of walmart,target,vons,ralphs,costco,samsclub,staterbros,cvs,walgreens,amazon,ebay,steam,gog,humble,gmg,bestbuy,gamestop,tcgplayer,barnes,sephora,macys. No $0. No digital game stores unless it is a video game. No made-up shops.",
+              "). Only stores that actually sell THIS SKU. Catalina Crunch is not Cinnamon Toast Crunch. Club warehouse packs are different SKUs — skip a store if you are not sure they sell this exact item. store must be one of walmart,target,vons,ralphs,costco,sams,staterbros,cvs,walgreens,amazon,ebay,steam,gog,humble,gmg,bestbuy,gamestop,tcgplayer,barnes,sephora,macys. No $0. No digital game stores unless it is a video game.",
           },
         ],
       }),
@@ -227,7 +231,11 @@ async function huntShelfPrices(query: string, category: string): Promise<Offer[]
     const parsed = JSON.parse(match[0]) as { offers?: { store?: string; price?: number }[] };
     const out: Offer[] = [];
     for (const row of parsed.offers ?? []) {
-      const storeId = String(row.store || "").toLowerCase().replace(/[^a-z]/g, "");
+      const storeId = String(row.store || "")
+        .toLowerCase()
+        .replace(/[^a-z]/g, "")
+        .replace(/^samsclub$/, "sams")
+        .replace(/^staterbros$/, "stater");
       const price = Number(row.price);
       if (!SHELF_IDS.has(storeId) || !Number.isFinite(price) || price <= 0) continue;
       const offer = liveOffer(storeId, price, "Hunted · confirm at checkout");
@@ -242,7 +250,7 @@ async function huntShelfPrices(query: string, category: string): Promise<Offer[]
 }
 
 export const enrichHunt = createServerFn({ method: "POST" })
-  .validator((input: { query: string; category?: string }) => input)
+  .validator((input: { query: string; category?: string; place?: string }) => input)
   .handler(async ({ data }): Promise<{ extra: Offer[]; identified: { name: string; upc?: string } | null; image?: string; candidates?: { name: string; image?: string; hint: string }[]; category?: string }> => {
     const extra: Offer[] = [];
     let identified: { name: string; upc?: string } | null = null;
@@ -274,7 +282,11 @@ export const enrichHunt = createServerFn({ method: "POST" })
 
     if (!isAisleQuery(q)) {
       jobs.push(
-        huntShelfPrices(q, catHint || (grocery ? "groceries" : tryGames ? "games" : tcg ? "collectibles" : "")).then(
+        huntShelfPrices(
+          q,
+          catHint || (grocery ? "groceries" : tryGames ? "games" : tcg ? "collectibles" : ""),
+          data.place || "Glendora CA 91741",
+        ).then(
           (rows) => {
             extra.push(...rows);
           },
@@ -692,11 +704,11 @@ async function coverFallback(query: string, category: string): Promise<string | 
   }
   const wikiTitle = query.replace(/\s+/g, "_").replace(/[^\w()-]/g, "");
   if (wikiTitle.length > 2) {
-    const wiki = await getJson<{ thumbnail?: { source?: string } }>(
+    const wiki = await getJson<{ title?: string; thumbnail?: { source?: string } }>(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`,
       1400,
     );
-    if (wiki?.thumbnail?.source) return wiki.thumbnail.source;
+    if (wiki?.thumbnail?.source && nameFits(query, wiki.title)) return wiki.thumbnail.source;
   }
   if (category === "games") {
     const itunes = await getJson<{ results?: { artworkUrl100?: string }[] }>(
@@ -798,8 +810,8 @@ async function productFacts(code: string): Promise<{
                     ? "traderjoes"
                     : null;
     if (!storeId) continue;
-    const row = liveOffer(storeId, Number(item.price), "Live Open Prices");
-    if (row) offers.push(row);
+    const row = liveOffer(storeId, Number(item.price), "Reported · confirm in store");
+    if (row) offers.push({ ...row, live: false, searchOnly: true });
   }
   if (!identified && offers.length === 0) return null;
   return { identified, offers, image };

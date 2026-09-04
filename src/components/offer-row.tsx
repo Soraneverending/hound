@@ -19,6 +19,8 @@ export function OfferRow({
   category: Category;
 }) {
   const delta = offer.total - floor;
+  const zip = useHound((s) => s.zip);
+  const nearHome = zip === "91741";
   const tags = useHound((s) => s.partnerTags);
   const href = partnerHref(offer.storeId, name, tags, offer.url);
   const recordClick = useHound((s) => s.recordClick);
@@ -68,7 +70,7 @@ export function OfferRow({
           <span className="mt-1 block text-xs text-muted">
             {offer.condition.replace("-", " ")}
             {offer.store.paypal ? " · PayPal" : ""}
-            {offer.store.miles != null && offer.store.pickup ? ` · ${offer.store.miles} mi` : ""}
+            {nearHome && offer.store.miles != null && offer.store.pickup ? ` · ${offer.store.miles} mi` : ""}
           </span>
         </span>
         <span className="shrink-0 text-right">

@@ -61,7 +61,10 @@ function nameClose(query: string, identified: string) {
   if (!q || !n) return false;
   const tokens = q.split(" ").filter((w) => w.length > 2);
   if (tokens.length === 0) return n.includes(q);
-  return tokens.filter((t) => n.includes(t)).length >= Math.ceil(tokens.length * 0.7);
+  const hits = tokens.filter((t) => n.includes(t)).length;
+  if (hits < Math.ceil(tokens.length * 0.7)) return false;
+  const must = tokens.filter((t) => t.length >= 7);
+  return must.length === 0 || must.every((t) => n.includes(t));
 }
 
 export function unlockUi() {
@@ -181,14 +184,22 @@ export async function runHunt(
     return;
   }
   try {
-    const live = await enrichHunt({ data: { query: q, category: meta.category } });
+    const live = await enrichHunt({
+      data: {
+        query: q,
+        category: meta.category,
+        place: `${useHound.getState().city} ${useHound.getState().zip}`.trim() || "Glendora CA 91741",
+      },
+    });
     if (seq !== huntSeq) return;
     if (useHound.getState().stayHome) return;
     const identified = live.identified?.name;
     const nextQuery =
       identified && !isAisleQuery(q) && nameClose(q, identified) ? identified : q;
     const keepShot = isUserShot(local.product.image) || isUserShot(image);
-    const nextImage = keepShot ? local.product.image || image : local.product.image || image || live.image;
+    const nextImage = keepShot
+      ? local.product.image || image
+      : local.product.image || image || (identified && nameClose(q, identified) ? live.image : undefined);
     if (nextImage) rememberShot(q, nextImage);
     if (nextImage && nextQuery !== q) rememberShot(nextQuery, nextImage);
     if (nextImage) remember(nextQuery, nextImage);

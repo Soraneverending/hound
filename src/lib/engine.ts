@@ -81,30 +81,25 @@ function shippingFor(storeId: string, price: number, cond: Condition): number {
 function aboutPrice(base: number, storeId: string) {
   const store = STORE_MAP[storeId];
   const kind = store?.kind;
+  if (kind === "grocery" || kind === "club" || kind === "pharmacy") return money(base);
   const scale =
-    kind === "club"
-      ? 0.84
-      : kind === "grocery"
-        ? 1
-        : kind === "pharmacy"
-          ? 1.16
-          : kind === "bigbox"
-            ? 0.94
-            : kind === "digital"
-              ? 0.88
-              : kind === "marketplace"
-                ? 0.9
-                : kind === "thrift"
-                  ? 0.4
-                  : kind === "luxury"
-                    ? 1.32
-                    : kind === "beauty"
-                      ? 1.06
-                      : kind === "mall"
-                        ? 1.08
-                        : kind === "handmade"
-                          ? 1.12
-                          : 1;
+    kind === "bigbox"
+      ? 0.94
+      : kind === "digital"
+        ? 0.88
+        : kind === "marketplace"
+          ? 0.9
+          : kind === "thrift"
+            ? 0.4
+            : kind === "luxury"
+              ? 1.32
+              : kind === "beauty"
+                ? 1.06
+                : kind === "mall"
+                  ? 1.08
+                  : kind === "handmade"
+                    ? 1.12
+                    : 1;
   const salt = (hash(storeId) % 9) - 4;
   return money(Math.max(0.49, base * scale * (1 + salt * 0.01)));
 }
@@ -423,6 +418,7 @@ function brandFrom(q: string) {
   if (/metal gear|\bmgs\b|snake eater|konami/i.test(q)) return "Konami";
   if (/yakuza|like a dragon|sega/i.test(q)) return "SEGA";
   if (/zelda|mario|nintendo/i.test(q)) return "Nintendo";
+  if (/catalina crunch/i.test(q)) return "Catalina Crunch";
   if (/cheerios|general mills/i.test(q)) return "General Mills";
   if (/frosted flakes|kellogg|raisin bran|\bbran\b/i.test(q)) return "Kellogg's";
   if (/berserk|kentaro miura|dark horse/i.test(q)) return "Dark Horse";
@@ -491,6 +487,7 @@ function typicalFor(q: string) {
   if (isTradingCard(q)) return 2.49;
   const cat = guessCategory(q);
   if (cat === "books" && /deluxe|hardcover|omnibus/.test(q.toLowerCase())) return 49.99;
+  if (cat === "groceries" && /protein cereal|catalina crunch/i.test(q)) return 9.99;
   const base: Record<Category, number> = {
     games: 29.99,
     groceries: 5.49,

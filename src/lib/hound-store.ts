@@ -51,6 +51,9 @@ type HoundState = {
   partnerTags: PartnerTags;
   clicks: PartnerClick[];
   pro: boolean;
+  zip: string;
+  city: string;
+  setPlace: (zip: string, city?: string) => void;
   setTab: (tab: TabId) => void;
   setQuery: (q: string) => void;
   setSearchOpen: (open: boolean) => void;
@@ -127,6 +130,8 @@ export const useHound = create<HoundState>()(
       partnerTags: {},
       clicks: [],
       pro: false,
+      zip: "91741",
+      city: "Glendora",
       setTab: (tab) => set({ tab, searchOpen: false }),
       setQuery: (query) => set({ query }),
       setSearchOpen: (searchOpen) => set({ searchOpen }),
@@ -377,6 +382,11 @@ export const useHound = create<HoundState>()(
             ? get().pins
             : get().pins.map((p) => ({ ...p, snag: false })).slice(0, FREE_PIN_LIMIT),
         }),
+      setPlace: (zip, city) => {
+        const nextZip = zip.replace(/\D/g, "").slice(0, 5);
+        if (nextZip.length !== 5) return;
+        set({ zip: nextZip, city: (city || get().city || "").trim() || "Your area" });
+      },
     }),
     {
       name: "hound-v4",
@@ -396,6 +406,8 @@ export const useHound = create<HoundState>()(
         clicks: s.clicks,
         pro: s.pro,
         lastHunt: s.lastHunt,
+        zip: s.zip,
+        city: s.city,
       }),
       merge: (persisted, current) => {
         const raw = (persisted ?? {}) as Partial<HoundState>;

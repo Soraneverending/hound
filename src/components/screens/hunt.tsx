@@ -3,8 +3,9 @@ import { ArrowLeft, Camera, Pin, ScanLine, Search } from "lucide-react";
 import { OfferRow } from "@/components/offer-row";
 import { ProductCover } from "@/components/product-cover";
 import { Button } from "@/components/ui/button";
+import { PlaceChip } from "@/components/place-chip";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { PRODUCT_MAP, KEY_HEAD, bestNew, bestTrusted, categoryLabel, findProduct, formatMoney, highlightOffers, isToyQuery, listingUrl, storeCount } from "@/lib/engine";
+import { PRODUCT_MAP, KEY_HEAD, bestNew, bestTrusted, categoryLabel, findProduct, formatMoney, highlightOffers, isToyQuery, listingUrl } from "@/lib/engine";
 import { suggest, isAisleQuery, isFranchiseQuery } from "@/lib/suggest";
 import { haptic } from "@/lib/haptics";
 import { useHound } from "@/lib/hound-store";
@@ -76,9 +77,7 @@ function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
     <>
       <header className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium tracking-[0.16em] text-muted uppercase">
-            Glendora · {storeCount()} storefronts
-          </p>
+          <PlaceChip />
           <h1 className="font-display mt-1 text-3xl leading-[1.08] tracking-[-0.04em]">Point at it. Pay less.</h1>
           <p className="mt-2 max-w-[32ch] text-sm leading-relaxed text-muted">
             Scan, pin, snag. Mall to Shop. Your look, your floor.
