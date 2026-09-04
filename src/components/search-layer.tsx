@@ -1,10 +1,16 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { useHound } from "@/lib/hound-store";
 import { goBack, runHunt } from "@/lib/run-hunt";
 
 export function HuntTop() {
   return <div className="h-2 bg-bg" />;
+}
+
+function pinPage() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 }
 
 export function SearchDock() {
@@ -15,6 +21,25 @@ export function SearchDock() {
   const result = useHound((s) => s.result);
   const inputRef = useRef<HTMLInputElement>(null);
   const showBack = Boolean(searchOpen || result);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    pinPage();
+    const vv = window.visualViewport;
+    const pin = () => pinPage();
+    vv?.addEventListener("resize", pin);
+    vv?.addEventListener("scroll", pin);
+    window.addEventListener("scroll", pin, true);
+    const t1 = window.setTimeout(pin, 50);
+    const t2 = window.setTimeout(pin, 300);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      vv?.removeEventListener("resize", pin);
+      vv?.removeEventListener("scroll", pin);
+      window.removeEventListener("scroll", pin, true);
+    };
+  }, [searchOpen]);
 
   function huntNow(q = query) {
     const next = q.trim();
@@ -65,9 +90,7 @@ export function SearchDock() {
           spellCheck={false}
           onFocus={(e) => {
             setSearchOpen(true);
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
+            pinPage();
             e.currentTarget.focus({ preventScroll: true });
           }}
           onChange={(e) => {
@@ -83,7 +106,7 @@ export function SearchDock() {
             onClick={() => {
               setQuery("");
               setSearchOpen(true);
-              inputRef.current?.focus();
+              inputRef.current?.focus({ preventScroll: true });
             }}
             className="absolute top-1/2 right-16 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full text-muted"
           >
