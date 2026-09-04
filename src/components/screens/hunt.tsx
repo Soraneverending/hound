@@ -177,25 +177,9 @@ export function SearchChrome() {
             } catch {
               /* older webkit */
             }
-            window.scrollTo(0, 0);
-            const sc = document.querySelector(".app-scroll");
-            if (sc instanceof HTMLElement) sc.scrollTop = 0;
+            // Do not scrollTo(0) here — that fights the keyboard open animation.
           }}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            // iOS: take focus ourselves with preventScroll so WKWebView is less eager to pan.
-            if (e.pointerType === "touch" || e.pointerType === "pen") {
-              e.preventDefault();
-              const el = inputRef.current;
-              if (el && document.activeElement !== el) {
-                try {
-                  el.focus({ preventScroll: true });
-                } catch {
-                  el.focus();
-                }
-              }
-            }
-          }}
+          onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
             if (e.key !== "Enter") return;
             e.preventDefault();
@@ -207,8 +191,14 @@ export function SearchChrome() {
             window.setTimeout(() => setOpen(false), 120);
             document.documentElement.classList.remove("hound-search-focus");
             window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
             const sc = document.querySelector(".app-scroll");
             if (sc instanceof HTMLElement) sc.scrollTop = 0;
+            window.setTimeout(() => {
+              window.scrollTo(0, 0);
+              if (sc instanceof HTMLElement) sc.scrollTop = 0;
+            }, 280);
           }}
           placeholder="Name or title"
           enterKeyHint="search"
