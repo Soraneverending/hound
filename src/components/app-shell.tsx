@@ -25,11 +25,6 @@ function bootFromStorage() {
   }
 }
 
-function lockShellHeight() {
-  const h = Math.round(window.innerHeight);
-  document.documentElement.style.setProperty("--app-h", `${h}px`);
-}
-
 export function AppShell() {
   const tab = useHound((s) => s.tab);
   const theme = useHound((s) => s.theme);
@@ -38,7 +33,6 @@ export function AppShell() {
 
   useLayoutEffect(() => {
     bootFromStorage();
-    lockShellHeight();
     const vk = (navigator as Navigator & { virtualKeyboard?: { overlaysContent: boolean } }).virtualKeyboard;
     if (vk) vk.overlaysContent = true;
     const w = window as Window & { __houndReady?: boolean; __houndTaps?: { x: number; y: number }[] };
@@ -51,9 +45,6 @@ export function AppShell() {
         if (btn instanceof HTMLElement) btn.click();
       });
     }
-    const onOrient = () => setTimeout(lockShellHeight, 400);
-    window.addEventListener("orientationchange", onOrient);
-    return () => window.removeEventListener("orientationchange", onOrient);
   }, []);
 
   useEffect(() => {

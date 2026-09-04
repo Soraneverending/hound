@@ -75,7 +75,7 @@ function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
 
   return (
     <>
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex items-start justify-between gap-3 pt-1 pl-12">
         <div>
           <PlaceChip />
           <h1 className="font-display mt-1 text-3xl leading-[1.08] tracking-[-0.04em]">Point at it. Pay less.</h1>
