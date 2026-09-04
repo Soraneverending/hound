@@ -240,6 +240,16 @@ html.hound-search-focus .app-scroll {
   touch-action: none;
 }
 
+/* Slightly compress chrome so the input sits higher — still under Hound, never hidden. */
+html.hound-search-focus .brand-row {
+  padding-top: 0.35rem;
+  padding-bottom: 0;
+}
+html.hound-search-focus .app-chrome .relative.z-30 {
+  padding-top: 0.15rem;
+  padding-bottom: 0.35rem;
+}
+
 [data-hound-search="1"] {
   font-size: 16px;
 }
