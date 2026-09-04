@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "North",
+    "slug": "north",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "north",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.north.pocket",
+      "infoPlist": {
+        "NSCameraUsageDescription": "North uses the camera to attach a still to a note.",
+        "NSPhotoLibraryUsageDescription": "North can attach a photo from your library to a note."
+      }
+    },
+    "android": {
+      "package": "app.north.pocket",
+      "permissions": ["CAMERA", "VIBRATE"]
+    },
+    "plugins": ["expo-image-picker"]
+  }
+}
