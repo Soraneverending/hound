@@ -36,6 +36,7 @@ async function snap(name) {
     return {
       h: window.innerHeight,
       typing: document.documentElement.classList.contains("hound-typing"),
+      searchFocus: document.documentElement.classList.contains("hound-search-focus"),
       transform: shell instanceof HTMLElement ? shell.style.transform : "",
       shellTop: shell ? Math.round(shell.getBoundingClientRect().top) : null,
       search: box(search),
@@ -59,10 +60,11 @@ if (rest.brand.display === "none") issues.push("rest: brand hidden");
 await page.locator("[data-hound-search]").click();
 await page.waitForTimeout(150);
 const focused = await snap("qa-focused");
-if (!focused.typing) issues.push("focused: missing typing class");
-if (focused.brand.display !== "none") issues.push("focused: brand still visible");
-if (focused.tabs.display !== "none") issues.push("focused: tabs still visible");
-if (focused.search.top > 20) issues.push(`focused: search not at top ${focused.search.top}`);
+// Chrome must stay visible — hiding brand/tabs caused the iOS jump (see GROK_HANDOFF.md).
+if (focused.brand.display === "none") issues.push("focused: brand hidden");
+if (focused.tabs.display === "none") issues.push("focused: tabs hidden");
+if (focused.search.top < 40) issues.push(`focused: search jumped too high ${focused.search.top}`);
+if (focused.shellTop !== 0 && Math.abs(focused.shellTop) > 2) issues.push(`focused: shell top ${focused.shellTop}`);
 
 await page.fill("[data-hound-search]", "rasin bran");
 await page.waitForTimeout(250);
@@ -80,6 +82,7 @@ await page.locator("[data-hound-search]").evaluate((el) => el.blur());
 await page.waitForTimeout(250);
 const after = await snap("qa-after-blur");
 if (after.typing) issues.push("blur: typing class stuck");
+ if (after.searchFocus) issues.push("blur: search-focus class stuck");
 if (after.tabs.display === "none") issues.push("blur: tabs still hidden");
 if (after.h - after.tabs.bottom > 8) issues.push(`blur: gap under tabs ${after.h - after.tabs.bottom}`);
 if (after.search.top < 40) issues.push(`blur: search too high ${after.search.top}`);
