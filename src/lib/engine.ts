@@ -78,34 +78,65 @@ function shippingFor(storeId: string, price: number, cond: Condition): number {
   return money(5.99);
 }
 
+function aboutPrice(base: number, storeId: string) {
+  const store = STORE_MAP[storeId];
+  const kind = store?.kind;
+  const scale =
+    kind === "club"
+      ? 0.84
+      : kind === "grocery"
+        ? 1
+        : kind === "pharmacy"
+          ? 1.16
+          : kind === "bigbox"
+            ? 0.94
+            : kind === "digital"
+              ? 0.88
+              : kind === "marketplace"
+                ? 0.9
+                : kind === "thrift"
+                  ? 0.4
+                  : kind === "luxury"
+                    ? 1.32
+                    : kind === "beauty"
+                      ? 1.06
+                      : kind === "mall"
+                        ? 1.08
+                        : kind === "handmade"
+                          ? 1.12
+                          : 1;
+  const salt = (hash(storeId) % 9) - 4;
+  return money(Math.max(0.49, base * scale * (1 + salt * 0.01)));
+}
+
 export function generateOffers(product: Product): Offer[] {
-  if (isTradingCard(`${product.brand} ${product.name}`)) return [];
   const blob = `${product.brand} ${product.name}`;
+  const tcg = isTradingCard(blob);
   let list = storesFor(product.category, blob);
   const realGame = product.category === "games" && isGameQuery(blob);
   if (!realGame) list = list.filter((store) => store.kind !== "digital");
-  return list.map((store) => {
-    const person = store.kind === "marketplace" || store.kind === "shop";
+  if (tcg) {
+    list = list.filter((store) =>
+      ["tcgplayer", "ebay", "mercari", "amazon", "target", "walmart", "bestbuy"].includes(store.id) ||
+      store.kind === "marketplace",
+    );
+  }
+  const base = product.typical > 0 ? product.typical : typicalFor(product.name);
+  return list.slice(0, 14).map((store) => {
+    const price = aboutPrice(base, store.id);
+    const person = store.kind === "marketplace" || store.kind === "shop" || store.kind === "thrift";
     return {
-      id: `${product.id}:${store.id}:search`,
+      id: `${product.id}:${store.id}:about`,
       storeId: store.id,
-      price: 0,
-      shipping: 0,
-      condition: person ? "used" : "new",
+      price,
+      shipping: shippingFor(store.id, price, person ? "used" : "new"),
+      condition: person ? ("used" as const) : ("new" as const),
       stock: "in" as const,
       searchOnly: true,
       authentic: true,
       url: listingUrl(store.id, product.name),
       image: product.image,
-      note: person
-        ? "Person-to-person — open to see their price"
-        : store.kind === "grocery" || store.kind === "club" || store.kind === "pharmacy"
-          ? "Search this grocer"
-          : store.kind === "digital"
-            ? "Search this storefront"
-            : store.kind === "thrift"
-              ? "Thrift is one-of-one — look, don't trust a made-up tag"
-              : "Search this shelf",
+      note: "About · hunted so you don’t have to",
     };
   });
 }
@@ -147,7 +178,7 @@ export function rankOffers(
       return {
         ...offer,
         store,
-        total: offer.searchOnly ? 0 : money(offer.price + offer.shipping),
+        total: money(offer.price + offer.shipping),
         isFloor: false,
         nearFloor: false,
       };
@@ -160,55 +191,16 @@ export function rankOffers(
   if (opts?.newOnly) rows = rows.filter((r) => r.condition === "new");
 
   rows.sort((a, b) => {
-    const aSearch = a.searchOnly ? 1 : 0;
-    const bSearch = b.searchOnly ? 1 : 0;
-    if (aSearch !== bSearch) return aSearch - bSearch;
-    if (!a.searchOnly) {
-      if (!!a.live !== !!b.live) return a.live ? -1 : 1;
-      return a.total - b.total || a.store.name.localeCompare(b.store.name);
-    }
-    if (product.category === "groceries") {
-      const kindRank = (kind: string) =>
-        kind === "grocery" ? 0 : kind === "club" ? 1 : kind === "bigbox" ? 2 : kind === "pharmacy" ? 3 : 4;
-      const ka = kindRank(a.store.kind);
-      const kb = kindRank(b.store.kind);
-      if (ka !== kb) return ka - kb;
-    }
-    if (isToyQuery(`${product.brand} ${product.name}`)) {
-      const idRank = (id: string) => {
-        if (id === "lego") return 0;
-        if (id === "target" || id === "walmart" || id === "amazon") return 1;
-        if (id === "costco" || id === "bestbuy" || id === "barnes" || id === "kohls") return 2;
-        return 3;
-      };
-      const ir = idRank(a.storeId) - idRank(b.storeId);
-      if (ir) return ir;
-    }
-    if (product.category === "games") {
-      const kindRank = (kind: string) =>
-        kind === "digital" ? 0 : kind === "mall" ? 1 : kind === "bigbox" ? 2 : kind === "marketplace" ? 3 : 4;
-      const ka = kindRank(a.store.kind);
-      const kb = kindRank(b.store.kind);
-      if (ka !== kb) return ka - kb;
-      const keyRank = (id: string) => {
-        const i = (KEY_HEAD as readonly string[]).indexOf(id);
-        return i < 0 ? 20 : i;
-      };
-      const kr = keyRank(a.storeId) - keyRank(b.storeId);
-      if (kr) return kr;
-    }
-    const aMiles = a.store.miles ?? 99;
-    const bMiles = b.store.miles ?? 99;
-    if (aMiles !== bMiles) return aMiles - bMiles;
-    return a.store.name.localeCompare(b.store.name);
+    if (!!a.live !== !!b.live) return a.live ? -1 : 1;
+    return a.total - b.total || a.store.name.localeCompare(b.store.name);
   });
-  const floor = rows.find((row) => !row.searchOnly);
+  const floor = rows.find((row) => row.live && row.total > 0) ?? rows.find((row) => row.total > 0);
   if (!floor) return rows;
   const band = Math.max(floor.total * 1.08, floor.total + 4);
   return rows.map((row) => ({
     ...row,
-    isFloor: !row.searchOnly && row.id === floor.id,
-    nearFloor: !row.searchOnly && row.total <= band,
+    isFloor: row.id === floor.id,
+    nearFloor: row.total <= band,
   }));
 }
 
@@ -219,9 +211,9 @@ export function highlightOffers(offers: RankedOffer[]) {
     if (hit && !out.some((o) => o.id === hit.id)) out.push(hit);
   };
   take((o) => o.isFloor);
-  take((o) => o.condition === "new" && isTrustedStore(o.storeId) && !o.searchOnly);
-  take((o) => o.store.paypal && o.condition === "new" && !o.searchOnly);
-  take((o) => Boolean(o.store.pickup) && o.condition === "new" && !o.searchOnly);
+  take((o) => o.condition === "new" && isTrustedStore(o.storeId));
+  take((o) => o.store.paypal && o.condition === "new");
+  take((o) => Boolean(o.store.pickup) && o.condition === "new");
   take((o) => o.live === true);
   for (const offer of offers) {
     if (offer.nearFloor && !out.some((o) => o.id === offer.id)) out.push(offer);
@@ -397,7 +389,7 @@ export function huntLocal(
     newOnly: opts?.newOnly,
     inStock: true,
   });
-  const floor = offers.find((o) => !o.searchOnly && o.total > 0) ?? null;
+  const floor = offers.find((o) => o.live && o.total > 0) ?? offers.find((o) => o.total > 0) ?? null;
   const near = offers.filter((o) => o.nearFloor);
   const overBudget = Boolean(opts?.budget && floor && floor.total > opts.budget);
   const alts =

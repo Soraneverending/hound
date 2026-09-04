@@ -305,7 +305,7 @@ function ResultsPanel({
   const setTab = useHound((s) => s.setTab);
 
   const filtered = filterOffers(result.offers, paypalOnly, pickupOnly, newOnly);
-  const floor = filtered.find((o) => !o.searchOnly) ?? null;
+  const floor = filtered.find((o) => o.live && o.total > 0) ?? filtered.find((o) => o.total > 0) ?? null;
   const offers = filtered.map((o) => ({
     ...o,
     isFloor: floor ? o.id === floor.id : false,

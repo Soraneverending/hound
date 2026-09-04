@@ -62,7 +62,7 @@ export function OfferRow({
             {offer.live ? (
               <span className="text-xs font-medium tracking-[0.12em] text-good uppercase">Live</span>
             ) : searchOnly ? (
-              <span className="text-xs font-medium tracking-[0.12em] text-muted uppercase">Listings</span>
+              <span className="text-xs font-medium tracking-[0.12em] text-muted uppercase">About</span>
             ) : null}
           </span>
           <span className="mt-1 block text-xs text-muted">
@@ -72,19 +72,12 @@ export function OfferRow({
           </span>
         </span>
         <span className="shrink-0 text-right">
-          {searchOnly ? (
-            <>
-              <span className="block text-sm font-medium">See price</span>
-              <span className="mt-0.5 block text-xs text-muted">on their site</span>
-            </>
-          ) : (
-            <>
-              <span className="font-mono block text-base font-medium tabular-nums">{formatMoney(offer.total)}</span>
-              {!offer.isFloor && delta > 0 ? (
-                <span className="mt-0.5 block text-xs text-muted tabular-nums">+{formatMoney(delta)}</span>
-              ) : null}
-            </>
-          )}
+          <span className="font-mono block text-base font-medium tabular-nums">{formatMoney(offer.total)}</span>
+          {!offer.isFloor && delta > 0 ? (
+            <span className="mt-0.5 block text-xs text-muted tabular-nums">+{formatMoney(delta)}</span>
+          ) : searchOnly && !offer.live ? (
+            <span className="mt-0.5 block text-xs text-muted">confirm there</span>
+          ) : null}
         </span>
       </a>
       <div className="flex border-t border-line px-2">

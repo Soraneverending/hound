@@ -166,6 +166,81 @@ async function identifyText(query: string): Promise<{ name: string; brand?: stri
   }
 }
 
+const SHELF_IDS = new Set([
+  "walmart",
+  "target",
+  "vons",
+  "ralphs",
+  "costco",
+  "samsclub",
+  "staterbros",
+  "cvs",
+  "walgreens",
+  "amazon",
+  "ebay",
+  "steam",
+  "gog",
+  "humble",
+  "gmg",
+  "bestbuy",
+  "gamestop",
+  "tcgplayer",
+  "barnes",
+  "sephora",
+  "macys",
+]);
+
+async function huntShelfPrices(query: string, category: string): Promise<Offer[]> {
+  const apiKey = process.env.XAI_API_KEY;
+  if (!apiKey) return [];
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const res = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "grok-4.5",
+        max_tokens: 220,
+        temperature: 0,
+        messages: [
+          {
+            role: "user",
+            content:
+              'JSON only: {"offers":[{"store":"vons","price":4.99}]}. Typical current US retail near Glendora CA 91741 for ' +
+              JSON.stringify(query) +
+              " (" +
+              (category || "product") +
+              "). Only stores that actually sell THIS item. store must be one of walmart,target,vons,ralphs,costco,samsclub,staterbros,cvs,walgreens,amazon,ebay,steam,gog,humble,gmg,bestbuy,gamestop,tcgplayer,barnes,sephora,macys. No $0. No digital game stores unless it is a video game. No made-up shops.",
+          },
+        ],
+      }),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const match = (body.choices?.[0]?.message?.content ?? "").match(/\{[\s\S]*\}/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]) as { offers?: { store?: string; price?: number }[] };
+    const out: Offer[] = [];
+    for (const row of parsed.offers ?? []) {
+      const storeId = String(row.store || "").toLowerCase().replace(/[^a-z]/g, "");
+      const price = Number(row.price);
+      if (!SHELF_IDS.has(storeId) || !Number.isFinite(price) || price <= 0) continue;
+      const offer = liveOffer(storeId, price, "Hunted · confirm at checkout");
+      if (offer) out.push({ ...offer, live: false, searchOnly: true });
+    }
+    return out.slice(0, 10);
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export const enrichHunt = createServerFn({ method: "POST" })
   .validator((input: { query: string; category?: string }) => input)
   .handler(async ({ data }): Promise<{ extra: Offer[]; identified: { name: string; upc?: string } | null; image?: string; candidates?: { name: string; image?: string; hint: string }[]; category?: string }> => {
@@ -196,6 +271,16 @@ export const enrichHunt = createServerFn({ method: "POST" })
     const jobs: Promise<void>[] = [];
     let grokCat: string | undefined;
     let wikiCat: string | undefined;
+
+    if (!isAisleQuery(q)) {
+      jobs.push(
+        huntShelfPrices(q, catHint || (grocery ? "groceries" : tryGames ? "games" : tcg ? "collectibles" : "")).then(
+          (rows) => {
+            extra.push(...rows);
+          },
+        ),
+      );
+    }
 
     if (!isUpc && !isAisleQuery(q)) {
       jobs.push(
