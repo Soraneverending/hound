@@ -152,6 +152,7 @@ export async function runHunt(
 
   const { paypalOnly, pickupOnly, newOnly, budget, setHunting, setResult, remember, rememberHunt, setQuery, setScanning } =
     useHound.getState();
+  useHound.setState({ stayHome: false, searchOpen: false });
   if (!hint?.restore) blurActive();
   setScanning(false);
   if (!hint?.restore) setQuery(q);

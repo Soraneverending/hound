@@ -44,6 +44,18 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
+    const blockSubmit = (e: Event) => {
+      const t = e.target;
+      if (t instanceof HTMLFormElement && t.getAttribute("role") === "search") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener("submit", blockSubmit, true);
+    return () => document.removeEventListener("submit", blockSubmit, true);
+  }, []);
+
+  useEffect(() => {
     const next = normalizeTheme(theme);
     if (next !== theme) setTheme(next);
     const root = document.documentElement;

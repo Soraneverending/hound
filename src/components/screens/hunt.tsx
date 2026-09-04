@@ -26,18 +26,23 @@ const SAMPLES = [
 
 function startHunt(name: string, image?: string, category?: string) {
   useHound.getState().setSearchOpen(false);
-  unlockUi();
   haptic("light");
   void runHunt(name, "search", { image, category });
 }
 
+let lastPress = 0;
 function pressProps(run: () => void) {
+  const fire = (e: { preventDefault: () => void; stopPropagation: () => void }) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - lastPress < 320) return;
+    lastPress = now;
+    run();
+  };
   return {
-    onClick: (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      run();
-    },
+    onPointerUp: fire,
+    onClick: fire,
   };
 }
 
@@ -53,9 +58,11 @@ export function HuntScreen() {
     if (el) el.scrollTop = 0;
   }, [result?.product.id]);
 
+  const showSuggest = searchOpen && !hunting;
+
   return (
     <div className="flex flex-col gap-4 pb-4">
-      {searchOpen ? (
+      {showSuggest ? (
         <LiveSearchPanel />
       ) : result ? (
         <ResultsPanel result={result} hunting={hunting} status={status} onBack={() => goHome()} />
@@ -158,17 +165,16 @@ export function SearchChrome() {
     if (!next) return;
     setQuery(next);
     setSearchOpen(false);
-    inputRef.current?.blur();
     void runHunt(next);
   }
 
   return (
     <form
       role="search"
-      action="."
       className="bg-bg pt-2 pr-16 pb-2 pl-16"
       onSubmit={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         huntNow();
       }}
     >
@@ -176,23 +182,22 @@ export function SearchChrome() {
         <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-faint" />
         <input
           ref={inputRef}
-          type="search"
+          type="text"
           data-hound-search="1"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
             setSearchOpen(true);
           }}
-          onPointerDown={(e) => {
-            if (e.pointerType === "mouse") return;
-            e.preventDefault();
+          onPointerDown={(e) => e.stopPropagation()}
+          onFocus={(e) => {
+            setSearchOpen(true);
             try {
-              e.currentTarget.focus({ preventScroll: true });
+              e.target.focus({ preventScroll: true });
             } catch {
-              e.currentTarget.focus();
+              /* older webkit */
             }
           }}
-          onFocus={() => setSearchOpen(true)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -210,7 +215,6 @@ export function SearchChrome() {
           autoCorrect="off"
           autoComplete="off"
           spellCheck={false}
-          name="q"
           className="h-12 w-full rounded-full bg-paper pr-[4.6rem] pl-11 text-base shadow-[var(--shadow-card)] outline-none ring-ink/15 focus:ring-2"
         />
         {query.trim() ? (

@@ -396,7 +396,6 @@ export const useHound = create<HoundState>()(
         clicks: s.clicks,
         pro: s.pro,
         lastHunt: s.lastHunt,
-        stayHome: s.stayHome,
       }),
       merge: (persisted, current) => {
         const raw = (persisted ?? {}) as Partial<HoundState>;
@@ -415,7 +414,6 @@ export const useHound = create<HoundState>()(
           clicks: Array.isArray(raw.clicks) ? raw.clicks : current.clicks,
           pro: Boolean(raw.pro),
           lastHunt: raw.lastHunt?.q ? raw.lastHunt : current.lastHunt,
-          stayHome: typeof raw.stayHome === "boolean" ? raw.stayHome : current.stayHome,
           result: current.result,
           query: current.query,
           hunting: current.hunting,
