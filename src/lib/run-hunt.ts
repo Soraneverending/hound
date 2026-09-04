@@ -171,7 +171,7 @@ export async function runHunt(
     image: image && (image.startsWith("http") || image.startsWith("/")) ? image : undefined,
   });
   try {
-    const live = await enrichHunt({ data: { query: q, category: local.product.category } });
+    const live = await enrichHunt({ data: { query: q, category: meta.category } });
     if (seq !== huntSeq) return;
     if (useHound.getState().stayHome) return;
     const identified = live.identified?.name;

@@ -325,11 +325,11 @@ const GROCERY_LIST = GROCERY_WORDS.split(" ");
 
 function closeWord(token: string, word: string) {
   if (token === word) return true;
-  if (token.length < 4 || word.length < 4) return false;
+  if (token.length < 5 || word.length < 5) return false;
   return edits(token, word) <= 1;
 }
 
-function looksGrocery(q: string) {
+export function looksGrocery(q: string) {
   const tokens = normalizeQuery(q).split(" ").filter(Boolean);
   return tokens.some((t) => GROCERY_LIST.some((w) => closeWord(t, w)));
 }

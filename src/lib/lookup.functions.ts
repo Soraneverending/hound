@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { listingUrl, isGameQuery, isBookQuery, isToyQuery } from "@/lib/engine";
+import { listingUrl, isGameQuery, isBookQuery, isToyQuery, looksGrocery } from "@/lib/engine";
 import { isAisleQuery, isAddonTitle } from "@/lib/suggest";
 import { isTradingCard } from "@/lib/stores";
 import type { Offer } from "@/lib/types";
@@ -68,6 +68,59 @@ function nameFits(query: string, name?: string) {
   return hits >= Math.ceil(tokens.length * 0.7);
 }
 
+function categoryFromBlurb(text: string): string | undefined {
+  const s = text.toLowerCase();
+  if (/trading card|collectible card|\btcg\b/.test(s)) return "collectibles";
+  if (/\bmanga\b|\banime\b|comic book|graphic novel|light novel|isbn|\bnovel\b|written by|author of|book series|weekly shōnen|shonen jump|seinen manga|shōjo|shojo/.test(s)) return "books";
+  if (/video game|stealth game|action rpg|role.playing|playstation|xbox|\bnintendo\b|steam (game|page)/.test(s)) return "games";
+  if (/breakfast cereal|snack food|soft drink|confection|grocery|brand of food|ice cream|yogurt/.test(s)) return "groceries";
+  if (/\bautomobile\b|\bsedan\b|\bsuv\b|sports car|pickup truck/.test(s)) return "cars";
+  if (/fashion house|clothing|apparel|footwear|sneaker|couture/.test(s)) return "clothes";
+  if (/lipstick|cosmetic|skincare|makeup|fragrance/.test(s)) return "beauty";
+  if (/\btoy\b|lego set|construction toy|action figure/.test(s)) return "home";
+  if (/smartphone|laptop|headphones|consumer electronics/.test(s)) return "electronics";
+  if (/analgesic|vitamin|pharmacy|over-the-counter/.test(s)) return "pharmacy";
+  return undefined;
+}
+
+async function wikiIdentify(query: string): Promise<{
+  name: string;
+  category?: string;
+  image?: string;
+  hint?: string;
+} | null> {
+  const trySummary = (title: string) =>
+    getJson<{
+      type?: string;
+      title?: string;
+      description?: string;
+      extract?: string;
+      thumbnail?: { source?: string };
+    }>(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/\s+/g, "_"))}`, 1800);
+
+  let summary = await trySummary(query.trim());
+  if (!summary?.title || summary.type === "disambiguation") {
+    const search = await getJson<{ query?: { search?: { title: string }[] } }>(
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=5&utf8=1`,
+      1600,
+    );
+    const hit = (search?.query?.search ?? []).find((row) => nameFits(query, row.title)) ?? search?.query?.search?.[0];
+    if (hit?.title) summary = await trySummary(hit.title);
+  }
+  if (!summary?.title) return null;
+  const blob = `${summary.title} ${summary.description ?? ""} ${summary.extract ?? ""}`;
+  const qn = query.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const tn = summary.title.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const close = nameFits(query, summary.title) || (qn.length >= 4 && tn.includes(qn)) || (tn.length >= 4 && qn.includes(tn));
+  if (!close && !nameFits(query, blob)) return null;
+  return {
+    name: summary.title,
+    category: categoryFromBlurb(blob),
+    image: httpsUrl(summary.thumbnail?.source),
+    hint: summary.description || undefined,
+  };
+}
+
 export const enrichHunt = createServerFn({ method: "POST" })
   .validator((input: { query: string; category?: string }) => input)
   .handler(async ({ data }): Promise<{ extra: Offer[]; identified: { name: string; upc?: string } | null; image?: string; candidates?: { name: string; image?: string; hint: string }[]; category?: string }> => {
@@ -86,19 +139,27 @@ export const enrichHunt = createServerFn({ method: "POST" })
     const tcg = isTradingCard(q);
     const poke = /pokemon|pokémon|charizard|pikachu|vmax/i.test(q);
     const bookish = cat === "books" || isIsbn || isBookQuery(q);
-    const locked =
-      tcg ||
-      bookish ||
-      cat === "groceries" ||
-      cat === "beauty" ||
-      cat === "pharmacy" ||
-      cat === "clothes" ||
-      cat === "cars" ||
-      isAisleQuery(q) ||
-      isToyQuery(q);
-    const tryGames = !tcg && !isToyQuery(q) && (cat === "games" || isGameQuery(q) || !locked);
+    const grocery = cat === "groceries" || looksGrocery(q);
+    const tryGames = !tcg && !isToyQuery(q) && (cat === "games" || isGameQuery(q));
+    const tryBooks = !tcg && !isUpc && !isAisleQuery(q);
+    const tryFood =
+      !tcg &&
+      !isUpc &&
+      !isAisleQuery(q) &&
+      (grocery || cat === "beauty" || cat === "pharmacy" || cat === "home" || (!tryGames && !bookish));
 
     const jobs: Promise<void>[] = [];
+
+    if (!isAisleQuery(q) && !isUpc) {
+      jobs.push(
+        wikiIdentify(q).then((row) => {
+          if (!row) return;
+          if (row.image) image ??= row.image;
+          if (row.name) identified ??= { name: row.name };
+          if (row.category) category = row.category;
+        }),
+      );
+    }
 
     if (tryGames) {
       jobs.push(
@@ -107,34 +168,36 @@ export const enrichHunt = createServerFn({ method: "POST" })
           if (row.image) image ??= row.image;
           if (row.identified && nameFits(q, row.identified)) {
             identified ??= { name: row.identified };
-            category = "games";
+            if (cat === "games" || isGameQuery(q)) category = "games";
           }
-          if (row.candidates.length) candidates = row.candidates;
+          if (row.candidates.length && (cat === "games" || isGameQuery(q))) candidates = row.candidates;
         }),
         steamOffer(q).then((row) => {
           if (row.offer) extra.push(row.offer);
           if (row.image) image ??= row.image;
           if (row.identified && nameFits(q, row.identified)) {
             identified ??= { name: row.identified };
-            category = "games";
+            if (cat === "games" || isGameQuery(q)) category = "games";
           }
         }),
       );
     }
-    if (bookish) {
+    if (tryBooks) {
       jobs.push(
         googleBook(q, isIsbn ? digits : undefined).then((row) => {
-          if (row?.offer) extra.push(row.offer);
-          if (row?.image) image ??= row.image;
-          if (row?.identified) identified ??= { name: row.identified };
-          if (row?.candidates.length) candidates = row.candidates;
-          if (row?.identified && nameFits(q, row.identified)) category = "books";
+          if (!row?.identified || !nameFits(q, row.identified)) return;
+          if (row.offer) extra.push(row.offer);
+          if (row.image) image ??= row.image;
+          identified ??= { name: row.identified };
+          if (row.candidates.length) candidates = row.candidates;
+          category ??= "books";
         }),
         openLibrary(q).then((row) => {
-          if (row?.image) image ??= row.image;
-          if (row?.identified) identified ??= { name: row.identified };
-          if (!candidates.length && row?.candidates.length) candidates = row.candidates;
-          if (row?.identified && nameFits(q, row.identified) && category !== "games") category = "books";
+          if (!row?.identified || !nameFits(q, row.identified)) return;
+          if (row.image) image ??= row.image;
+          identified ??= { name: row.identified };
+          if (!candidates.length && row.candidates.length) candidates = row.candidates;
+          if (category !== "games") category ??= "books";
         }),
       );
     }
@@ -164,14 +227,15 @@ export const enrichHunt = createServerFn({ method: "POST" })
           if (hit?.image) image ??= hit.image;
         }),
       );
-    } else if (!tcg && !isAisleQuery(q) && (cat === "groceries" || cat === "beauty" || cat === "pharmacy" || cat === "home")) {
+    } else if (tryFood) {
       jobs.push(
         (async () => {
-          const hit = await searchFacts(q, cat);
+          const hit = await searchFacts(q, cat || "groceries");
           if (!hit) return;
           if (!nameFits(q, hit.name)) return;
-          identified = hit;
+          identified ??= hit;
           if (hit.image) image ??= hit.image;
+          category ??= grocery ? "groceries" : cat || undefined;
           if (hit.upc) {
             const priced = await productFacts(hit.upc);
             if (priced?.offers) extra.push(...priced.offers);
