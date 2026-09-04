@@ -1,0 +1,16 @@
+Take over Hound. Private GitHub: https://github.com/Soraneverending/hound  branch main  commit e9d5fb9
+
+It is a camera-first price-hunting PWA (TanStack Start + Vite + React) running in Grok’s iOS chat preview (WKWebView). User has no Mac. Keyboard is SwiftKey on iPhone.
+
+Read CLAUDE.md in the repo first. Then fix the unsolved bug:
+
+After SwiftKey closes, the search dock and tab bar stay raised with a beige gap under them. They must snap flush to the bottom. Search tap must stay instant (do not unmount the home page, do not add delays).
+
+Do NOT: SearchSheet, hide tabs/header, translateY(visualViewport), 100lvh, --kb padding that lifts the dock, Playwright-as-proof, leftover file inputs (those spawned iOS prev/next).
+
+Search is the BOTTOM dock: src/components/search-layer.tsx
+Shell: src/components/app-shell.tsx
+Height restore: src/lib/shell-height.ts
+CSS: src/styles.css
+
+User iPhone videos are the only ground truth.
