@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { AislesScreen } from "@/components/screens/aisles";
 import { HuntScreen, LiveSearchPanel } from "@/components/screens/hunt";
 import { HuntTop, SearchDock } from "@/components/search-layer";
@@ -30,6 +30,7 @@ export function AppShell() {
   const theme = useHound((s) => s.theme);
   const setTheme = useHound((s) => s.setTheme);
   const searchOpen = useHound((s) => s.searchOpen);
+  const locked = useRef(0);
 
   useLayoutEffect(() => {
     bootFromStorage();
@@ -43,6 +44,32 @@ export function AppShell() {
         if (btn instanceof HTMLElement) btn.click();
       });
     }
+  }, []);
+
+  useLayoutEffect(() => {
+    const vk = (navigator as Navigator & { virtualKeyboard?: { overlaysContent: boolean } }).virtualKeyboard;
+    if (vk) vk.overlaysContent = true;
+    const root = document.documentElement;
+    const vv = window.visualViewport;
+    const sync = () => {
+      const vis = (vv?.height ?? window.innerHeight) + (vv?.offsetTop ?? 0);
+      const inner = window.innerHeight;
+      const open = vis < inner - 80 || (locked.current > 0 && vis < locked.current - 80);
+      if (!open) locked.current = inner;
+      else if (!locked.current) locked.current = Math.max(inner, vis);
+      const kb = Math.max(0, locked.current - vis);
+      root.style.setProperty("--app-h", `${locked.current}px`);
+      root.style.setProperty("--kb", `${Math.round(kb)}px`);
+    };
+    sync();
+    vv?.addEventListener("resize", sync);
+    vv?.addEventListener("scroll", sync);
+    window.addEventListener("resize", sync);
+    return () => {
+      vv?.removeEventListener("resize", sync);
+      vv?.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -86,7 +113,7 @@ export function AppShell() {
         ) : null}
       </main>
       {tab === "hunt" ? <SearchDock /> : null}
-      {searchOpen ? null : <TabBar />}
+      <TabBar />
       <SnagSheet />
     </div>
   );

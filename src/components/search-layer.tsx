@@ -1,56 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { useHound } from "@/lib/hound-store";
 import { goBack, runHunt } from "@/lib/run-hunt";
 
 export function HuntTop() {
-  const searchOpen = useHound((s) => s.searchOpen);
-  const result = useHound((s) => s.result);
-  const showBack = Boolean(searchOpen || result);
-  return (
-    <div className="flex min-h-12 items-center bg-bg pt-2 pr-16 pb-1 pl-16">
-      {showBack ? (
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={() => goBack()}
-          className="flex h-11 items-center gap-1 rounded-full px-1 text-sm font-medium"
-        >
-          <ArrowLeft className="size-5" />
-          Back
-        </button>
-      ) : null}
-    </div>
-  );
+  return <div className="h-2 bg-bg" />;
 }
 
 export function SearchDock() {
   const query = useHound((s) => s.query);
   const setQuery = useHound((s) => s.setQuery);
   const setSearchOpen = useHound((s) => s.setSearchOpen);
+  const searchOpen = useHound((s) => s.searchOpen);
+  const result = useHound((s) => s.result);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const vk = (navigator as Navigator & { virtualKeyboard?: { overlaysContent: boolean } }).virtualKeyboard;
-    if (vk) vk.overlaysContent = true;
-    const vv = window.visualViewport;
-    const sync = () => {
-      const height = vv?.height ?? window.innerHeight;
-      const offset = vv?.offsetTop ?? 0;
-      const kb = Math.max(0, window.innerHeight - height - offset);
-      document.documentElement.style.setProperty("--kb", `${Math.round(kb)}px`);
-    };
-    sync();
-    vv?.addEventListener("resize", sync);
-    vv?.addEventListener("scroll", sync);
-    window.addEventListener("resize", sync);
-    return () => {
-      vv?.removeEventListener("resize", sync);
-      vv?.removeEventListener("scroll", sync);
-      window.removeEventListener("resize", sync);
-      document.documentElement.style.setProperty("--kb", "0px");
-    };
-  }, []);
+  const showBack = Boolean(searchOpen || result);
 
   function huntNow(q = query) {
     const next = q.trim();
@@ -71,7 +35,21 @@ export function SearchDock() {
         huntNow();
       }}
     >
-      <div className="relative">
+      {showBack ? (
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => {
+            inputRef.current?.blur();
+            goBack();
+          }}
+          className="flex h-11 shrink-0 items-center gap-1 rounded-full px-1 text-sm font-medium"
+        >
+          <ArrowLeft className="size-5" />
+          Back
+        </button>
+      ) : null}
+      <div className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-faint" />
         <input
           ref={inputRef}
