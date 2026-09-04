@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
 import { AislesScreen } from "@/components/screens/aisles";
-import { HuntScreen } from "@/components/screens/hunt";
-import { SearchLaunch, SearchPage } from "@/components/search-layer";
+import { HuntScreen, LiveSearchPanel } from "@/components/screens/hunt";
+import { HuntSearch } from "@/components/search-layer";
 import { PinsScreen } from "@/components/screens/pins";
 import { HoundMark } from "@/components/hound-mark";
 import { PinPulse } from "@/components/pin-pulse";
@@ -57,20 +57,12 @@ export function AppShell() {
     if (meta && look) meta.setAttribute("content", look.color);
   }, [theme, setTheme]);
 
-  if (searchOpen) {
-    return (
-      <div className="app-shell text-ink">
-        <SearchPage />
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell text-ink">
       <PinPulse />
       <div className="app-chrome">
         {tab === "hunt" ? (
-          <SearchLaunch />
+          <HuntSearch />
         ) : (
           <div className="brand-row flex items-center justify-between gap-3 pt-3 pr-16 pb-2 pl-16">
             <div className="flex min-w-0 items-center gap-2">
@@ -83,7 +75,8 @@ export function AppShell() {
         <PingBar />
       </div>
       <main className="app-scroll min-h-0 flex-1 overflow-y-auto px-5 pt-4">
-        {tab === "hunt" ? <HuntScreen /> : null}
+        {tab === "hunt" && searchOpen ? <LiveSearchPanel /> : null}
+        {tab === "hunt" && !searchOpen ? <HuntScreen /> : null}
         {tab === "pins" ? <PinsScreen /> : null}
         {tab === "aisles" ? <AislesScreen /> : null}
         {tab === "board" ? (
@@ -92,7 +85,7 @@ export function AppShell() {
           </Suspense>
         ) : null}
       </main>
-      <TabBar />
+      {searchOpen ? null : <TabBar />}
       <SnagSheet />
     </div>
   );
