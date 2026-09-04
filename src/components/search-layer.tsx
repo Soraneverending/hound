@@ -85,7 +85,13 @@ export function SearchDock() {
           autoCorrect="off"
           autoComplete="off"
           spellCheck={false}
-          onFocus={() => setSearchOpen(true)}
+          onFocus={(e) => {
+            setSearchOpen(true);
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            e.currentTarget.focus({ preventScroll: true });
+          }}
           onChange={(e) => {
             setQuery(e.target.value);
             setSearchOpen(true);
