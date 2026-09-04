@@ -219,9 +219,15 @@ export function suggest(query: string, recent: { q: string }[] = []): Suggestion
     for (const r of recent) {
       push({ q: r.q, label: r.q, hint: "Recent", category: guessCategory(r.q) });
     }
-    for (const aisle of AISLES.slice(0, 6)) {
-      aisle.items.slice(0, 1).forEach(push);
-    }
+    const starters: Suggestion[] = [
+      { q: "Yakuza: Like a Dragon", label: "Yakuza: Like a Dragon", hint: "GOG vs Humble", image: "/covers/yakuza.jpg", category: "games" },
+      { q: "Honey Nut Cheerios", label: "Honey Nut Cheerios", hint: "Vons vs Costco", image: "/covers/cheerios.jpg", category: "groceries" },
+      { q: "cereal", label: "Cereal", hint: "Cheerios · Frosted Flakes", category: "groceries" },
+      { q: "shoes", label: "Shoes", hint: "Dunks · Vans · Target", category: "clothes" },
+      { q: "PlayStation 5 Slim", label: "PlayStation 5 Slim", hint: "Console aisle", category: "electronics" },
+      { q: "Chobani Greek Yogurt", label: "Chobani Greek Yogurt", hint: "Ralphs · Target", category: "groceries" },
+    ];
+    starters.forEach(push);
     return out.slice(0, 8);
   }
 

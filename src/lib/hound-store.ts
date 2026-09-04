@@ -29,6 +29,7 @@ type LastHunt = {
 type HoundState = {
   tab: TabId;
   query: string;
+  searchOpen: boolean;
   result: HuntResult | null;
   lastHunt: LastHunt | null;
   stayHome: boolean;
@@ -52,6 +53,7 @@ type HoundState = {
   pro: boolean;
   setTab: (tab: TabId) => void;
   setQuery: (q: string) => void;
+  setSearchOpen: (open: boolean) => void;
   setResult: (result: HuntResult | null) => void;
   goHome: () => void;
   setHunting: (v: boolean, status?: string) => void;
@@ -103,6 +105,7 @@ export const useHound = create<HoundState>()(
     (set, get) => ({
       tab: "hunt",
       query: "",
+      searchOpen: false,
       result: null,
       lastHunt: null,
       stayHome: false,
@@ -124,15 +127,16 @@ export const useHound = create<HoundState>()(
       partnerTags: {},
       clicks: [],
       pro: false,
-      setTab: (tab) => set({ tab }),
+      setTab: (tab) => set({ tab, searchOpen: false }),
       setQuery: (query) => set({ query }),
+      setSearchOpen: (searchOpen) => set({ searchOpen }),
       setResult: (result) =>
         set(
           result
-            ? { result, tab: "hunt", stayHome: false }
+            ? { result, tab: "hunt", stayHome: false, searchOpen: false }
             : { result: null },
         ),
-      goHome: () => set({ result: null, lastHunt: null, stayHome: true, query: "", hunting: false, status: "", scanning: false }),
+      goHome: () => set({ result: null, lastHunt: null, stayHome: true, query: "", hunting: false, status: "", scanning: false, searchOpen: false }),
       setHunting: (hunting, status = "") => set({ hunting, status }),
       setScanning: (scanning) => set({ scanning }),
       setBudget: (budget) => set({ budget: Math.max(0, budget) }),

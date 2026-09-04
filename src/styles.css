@@ -233,16 +233,14 @@ html[data-theme="harbor"] {
   flex: 0 0 auto;
 }
 
-/* While the home search is focused: stop iOS from scrolling .app-scroll
-   underneath the chrome. Do NOT hide .brand-row / .tab-bar (that caused the jump). */
-html.hound-search-focus .app-scroll {
-  overflow: hidden;
-  overscroll-behavior: none;
-  touch-action: none;
-}
-
 [data-hound-search="1"] {
   font-size: 16px;
+}
+
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 @media (min-width: 768px) {

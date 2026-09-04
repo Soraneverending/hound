@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Pin, ScanLine, Search } from "lucide-react";
+import { ArrowLeft, Camera, Pin, ScanLine, Search, X } from "lucide-react";
 import { OfferRow } from "@/components/offer-row";
 import { ProductCover } from "@/components/product-cover";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { PRODUCT_MAP, KEY_HEAD, bestNew, bestTrusted, categoryLabel, findProduct, formatMoney, highlightOffers, isToyQuery, listingUrl, storeCount } from "@/lib/engine";
 import { suggest, isAisleQuery, isFranchiseQuery } from "@/lib/suggest";
 import { haptic } from "@/lib/haptics";
@@ -24,6 +25,7 @@ const SAMPLES = [
   .filter(Boolean) as { id: string; label: string; hint: string; product: (typeof PRODUCT_MAP)[string] }[];
 
 function startHunt(name: string, image?: string, category?: string) {
+  useHound.getState().setSearchOpen(false);
   unlockUi();
   haptic("light");
   void runHunt(name, "search", { image, category });
@@ -43,6 +45,7 @@ export function HuntScreen() {
   const result = useHound((s) => s.result);
   const hunting = useHound((s) => s.hunting);
   const status = useHound((s) => s.status);
+  const searchOpen = useHound((s) => s.searchOpen);
 
   useEffect(() => {
     if (!result) return;
@@ -52,7 +55,9 @@ export function HuntScreen() {
 
   return (
     <div className="flex flex-col gap-4 pb-4">
-      {result ? (
+      {searchOpen ? (
+        <LiveSearchPanel />
+      ) : result ? (
         <ResultsPanel result={result} hunting={hunting} status={status} onBack={() => goHome()} />
       ) : (
         <HomePanel hunting={hunting} status={status} />
@@ -67,14 +72,17 @@ function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
 
   return (
     <>
-      <header>
-        <p className="text-xs font-medium tracking-[0.16em] text-muted uppercase">
-          Glendora · {storeCount()} storefronts
-        </p>
-        <h1 className="font-display mt-1 text-3xl leading-[1.08] tracking-[-0.04em]">Point at it. Pay less.</h1>
-        <p className="mt-2 max-w-[32ch] text-sm leading-relaxed text-muted">
-          Scan, pin, snag. Mall to Shop. Your look, your floor.
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium tracking-[0.16em] text-muted uppercase">
+            Glendora · {storeCount()} storefronts
+          </p>
+          <h1 className="font-display mt-1 text-3xl leading-[1.08] tracking-[-0.04em]">Point at it. Pay less.</h1>
+          <p className="mt-2 max-w-[32ch] text-sm leading-relaxed text-muted">
+            Scan, pin, snag. Mall to Shop. Your look, your floor.
+          </p>
+        </div>
+        <ThemeToggle />
       </header>
 
       <button
@@ -140,57 +148,60 @@ function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
 }
 
 export function SearchChrome() {
-  // LOCKED working search: real input, inline under Hound. Do not hide chrome,
-  // open a sheet, park a trap field, or translate the page.
   const query = useHound((s) => s.query);
   const setQuery = useHound((s) => s.setQuery);
-  const recent = useHound((s) => s.recent ?? []);
+  const setSearchOpen = useHound((s) => s.setSearchOpen);
   const inputRef = useRef<HTMLInputElement>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const hints = open ? suggest(query, recent) : [];
 
   function huntNow(q = query) {
     const next = q.trim();
     if (!next) return;
     setQuery(next);
-    setOpen(false);
+    setSearchOpen(false);
     inputRef.current?.blur();
     void runHunt(next);
   }
 
   return (
-    <div ref={boxRef} className="relative z-30 bg-bg px-4 pt-2 pb-2">
+    <form
+      role="search"
+      action="."
+      className="bg-bg pt-2 pr-16 pb-2 pl-16"
+      onSubmit={(e) => {
+        e.preventDefault();
+        huntNow();
+      }}
+    >
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-faint" />
         <input
           ref={inputRef}
+          type="search"
           data-hound-search="1"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            setOpen(true);
+            setSearchOpen(true);
           }}
-          onFocus={(e) => {
-            setOpen(true);
-            document.documentElement.classList.add("hound-search-focus");
+          onPointerDown={(e) => {
+            if (e.pointerType === "mouse") return;
+            e.preventDefault();
             try {
-              e.target.focus({ preventScroll: true });
+              e.currentTarget.focus({ preventScroll: true });
             } catch {
-              /* older webkit */
+              e.currentTarget.focus();
             }
           }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onFocus={() => setSearchOpen(true)}
           onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-            e.preventDefault();
-            huntNow();
-          }}
-          onBlur={(e) => {
-            const next = e.relatedTarget;
-            if (next instanceof Node && boxRef.current?.contains(next)) return;
-            window.setTimeout(() => setOpen(false), 120);
-            document.documentElement.classList.remove("hound-search-focus");
+            if (e.key === "Enter") {
+              e.preventDefault();
+              huntNow();
+            }
+            if (e.key === "Escape") {
+              setSearchOpen(false);
+              inputRef.current?.blur();
+            }
           }}
           placeholder="Name or title"
           enterKeyHint="search"
@@ -202,42 +213,119 @@ export function SearchChrome() {
           name="q"
           className="h-12 w-full rounded-full bg-paper pr-[4.6rem] pl-11 text-base shadow-[var(--shadow-card)] outline-none ring-ink/15 focus:ring-2"
         />
+        {query.trim() ? (
+          <button
+            type="button"
+            aria-label="Clear"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setQuery("");
+              setSearchOpen(true);
+              inputRef.current?.focus({ preventScroll: true });
+            }}
+            className="absolute top-1/2 right-16 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full text-muted"
+          >
+            <X className="size-4" />
+          </button>
+        ) : null}
         <button
-          type="button"
+          type="submit"
           disabled={!query.trim()}
-          onClick={() => huntNow()}
           className="absolute top-1.5 right-1.5 z-10 h-9 rounded-full bg-ink px-3.5 text-sm font-medium text-accent-fg disabled:opacity-40"
         >
           Hunt
         </button>
       </div>
-      {hints.length > 0 ? (
-        <ul className="absolute inset-x-5 top-[calc(100%-4px)] z-40 max-h-[min(40vh,18rem)] overflow-y-auto rounded-2xl bg-paper shadow-[var(--shadow-card)]">
+    </form>
+  );
+}
+
+function LiveSearchPanel() {
+  const query = useHound((s) => s.query);
+  const recent = useHound((s) => s.recent ?? []);
+  const hints = suggest(query, recent);
+  const aisle = isAisleQuery(query) && query.trim().length >= 3;
+
+  if (aisle && hints.length > 1) {
+    return (
+      <section>
+        <p className="text-xs font-medium tracking-[0.16em] text-muted uppercase">In that aisle</p>
+        <h2 className="font-display mt-1 text-2xl tracking-[-0.03em]">{query.trim() || "Pick one"}</h2>
+        <p className="mt-1 text-sm text-muted">Tap the item, then we hunt prices.</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
           {hints.map((h) => (
-            <li key={h.q}>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => huntNow(h.q)}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-left active:bg-desk"
-              >
-                {h.image ? (
-                  <img src={h.image} alt="" className="size-9 rounded-lg object-cover" />
-                ) : (
-                  <span className="grid size-9 place-items-center rounded-lg bg-desk text-xs font-medium text-muted">
-                    {h.label.slice(0, 1)}
-                  </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{h.label}</span>
-                  <span className="block truncate text-xs text-muted">{h.hint}</span>
-                </span>
-              </button>
-            </li>
+            <button
+              key={h.q}
+              type="button"
+              {...pressProps(() => startHunt(h.q, h.image, h.category))}
+              className="overflow-hidden rounded-2xl bg-paper text-left shadow-[var(--shadow-card)] select-none"
+            >
+              <ProductCover
+                name={h.label}
+                brand=""
+                category={h.category}
+                src={h.image}
+                className="aspect-square w-full rounded-none"
+              />
+              <span className="block px-3 py-2">
+                <span className="block line-clamp-2 text-sm font-medium leading-snug">{h.label}</span>
+                <span className="mt-0.5 block truncate text-[11px] text-muted">{h.hint}</span>
+              </span>
+            </button>
           ))}
-        </ul>
-      ) : null}
-    </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <p className="text-xs font-medium tracking-[0.16em] text-muted uppercase">
+        {query.trim() ? "Suggestions" : "Try a hunt"}
+      </p>
+      <ul className="mt-2 overflow-hidden rounded-2xl bg-paper shadow-[var(--shadow-card)]">
+        {hints.map((h) => (
+          <li key={h.q} className="border-b border-line last:border-b-0">
+            <button
+              type="button"
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => startHunt(h.q, h.image, h.category)}
+              className="flex w-full items-center gap-3 px-3 py-3 text-left active:bg-desk"
+            >
+              {h.image ? (
+                <img src={h.image} alt="" className="size-11 rounded-lg object-cover" />
+              ) : (
+                <span className="grid size-11 place-items-center rounded-lg bg-desk text-sm font-medium text-muted">
+                  {h.label.slice(0, 1)}
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{h.label}</span>
+                <span className="block truncate text-xs text-muted">{h.hint}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+        {query.trim() ? (
+          <li>
+            <button
+              type="button"
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={() => startHunt(query.trim())}
+              className="flex w-full items-center gap-3 px-3 py-3 text-left active:bg-desk"
+            >
+              <span className="grid size-11 place-items-center rounded-lg bg-ink text-accent-fg">
+                <Search className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">Hunt “{query.trim()}”</span>
+                <span className="block text-xs text-muted">Name it. We’ll pick the aisle.</span>
+              </span>
+            </button>
+          </li>
+        ) : null}
+      </ul>
+    </section>
   );
 }
 

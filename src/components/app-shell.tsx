@@ -44,68 +44,6 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    const root = document.documentElement;
-    const getScroll = () => document.querySelector(".app-scroll");
-    const reset = () => {
-      window.scrollTo(0, 0);
-      root.scrollTop = 0;
-      document.body.scrollTop = 0;
-      const scroll = getScroll();
-      if (scroll instanceof HTMLElement) scroll.scrollTop = 0;
-    };
-    // Only unwind AFTER the keyboard is gone. Resetting on visualViewport
-    // resize WHILE focused fights iOS mid-open and matches the ~3s jump.
-    const afterKeyboardClosed = () => {
-      if (root.classList.contains("hound-search-focus")) return;
-      reset();
-      window.setTimeout(reset, 50);
-      window.setTimeout(reset, 280);
-      window.setTimeout(reset, 500);
-    };
-    const isSearch = (t: EventTarget | null) =>
-      t instanceof HTMLElement && t.matches('[data-hound-search="1"]');
-
-    const onFocusIn = (e: FocusEvent) => {
-      if (!isSearch(e.target)) return;
-      root.classList.add("hound-search-focus");
-      // Do not scroll-reset here — iOS is still opening the keyboard.
-    };
-    const onFocusOut = (e: FocusEvent) => {
-      if (!isSearch(e.target)) return;
-      const next = e.relatedTarget;
-      if (next instanceof HTMLElement && next.closest('[data-hound-search="1"], .app-chrome')) {
-        return;
-      }
-      root.classList.remove("hound-search-focus");
-      afterKeyboardClosed();
-    };
-    const onViewportResize = () => {
-      // Keyboard open/close both fire resize. Only clean up when search blur already cleared the class.
-      afterKeyboardClosed();
-    };
-    const onScroll = () => {
-      if (!root.classList.contains("hound-search-focus")) return;
-      const scroll = getScroll();
-      if (scroll instanceof HTMLElement && scroll.scrollTop !== 0) scroll.scrollTop = 0;
-    };
-
-    window.addEventListener("focusin", onFocusIn);
-    window.addEventListener("focusout", onFocusOut);
-    window.addEventListener("pageshow", afterKeyboardClosed);
-    window.visualViewport?.addEventListener("resize", onViewportResize);
-    const scrollEl = getScroll();
-    scrollEl?.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      root.classList.remove("hound-search-focus");
-      window.removeEventListener("focusin", onFocusIn);
-      window.removeEventListener("focusout", onFocusOut);
-      window.removeEventListener("pageshow", afterKeyboardClosed);
-      window.visualViewport?.removeEventListener("resize", onViewportResize);
-      scrollEl?.removeEventListener("scroll", onScroll);
-    };
-  }, []);
-
-  useEffect(() => {
     const next = normalizeTheme(theme);
     if (next !== theme) setTheme(next);
     const root = document.documentElement;
@@ -121,14 +59,17 @@ export function AppShell() {
     <div className="app-shell text-ink">
       <PinPulse />
       <div className="app-chrome">
-        <div className="brand-row flex items-center justify-between gap-3 pt-3 pr-16 pb-1 pl-16">
-          <div className="flex min-w-0 items-center gap-2">
-            <HoundMark className="size-7 shrink-0 text-ink" />
-            <p className="font-display text-xl leading-none tracking-[-0.03em]">Hound</p>
+        {tab === "hunt" ? (
+          <SearchChrome />
+        ) : (
+          <div className="brand-row flex items-center justify-between gap-3 pt-3 pr-16 pb-2 pl-16">
+            <div className="flex min-w-0 items-center gap-2">
+              <HoundMark className="size-7 shrink-0 text-ink" />
+              <p className="font-display text-xl leading-none tracking-[-0.03em]">Hound</p>
+            </div>
+            <ThemeToggle />
           </div>
-          <ThemeToggle />
-        </div>
-        {tab === "hunt" ? <SearchChrome /> : null}
+        )}
         <PingBar />
       </div>
       <main className="app-scroll min-h-0 flex-1 overflow-y-auto px-5 pt-4">

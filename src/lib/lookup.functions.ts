@@ -121,11 +121,11 @@ async function wikiIdentify(query: string): Promise<{
   };
 }
 
-async function identifyText(query: string): Promise<{ name: string; brand?: string; category?: string } | null> {
+async function identifyText(query: string): Promise<{ name: string; brand?: string; category?: string; related?: string[] } | null> {
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) return null;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
+  const timer = setTimeout(() => ctrl.abort(), 6000);
   try {
     const res = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
@@ -135,13 +135,13 @@ async function identifyText(query: string): Promise<{ name: string; brand?: stri
       },
       body: JSON.stringify({
         model: "grok-4.5",
-        max_tokens: 120,
+        max_tokens: 180,
         temperature: 0,
         messages: [
           {
             role: "user",
             content:
-              'Name this product for a price app. JSON only: {"name":"","brand":"","category":"games|groceries|clothes|electronics|pharmacy|home|books|collectibles|cars|beauty"}. Card sleeves, deck boxes, playmats, binders, TCG supplies = collectibles, never games. Manga/comics/novels = books, never games. LEGO/toys = home, never games. Only "games" if it is a video game sold on Steam or consoles. Food = groceries. Keep the shopper\'s wording. Do not invent a different product. Query: ' +
+              'Identify this shopper query for a price app. JSON only: {"name":"canonical product","brand":"","category":"games|groceries|clothes|electronics|pharmacy|home|books|collectibles|cars|beauty","related":["specific titles they might mean"]}. Keep THEIR product — do not swap it. Card sleeves/deck boxes/playmats/binders/TCG supplies = collectibles, never games. Manga/comics/novels = books, never games. LEGO/toys = home, never games. Only "games" if it is a video game sold on Steam or consoles. Food/drinks = groceries. If they named a series (Metal Gear, Yakuza), related = the specific games, not DLC. If they named a brand like Nike, related = products. Query: ' +
               JSON.stringify(query),
           },
         ],
@@ -152,10 +152,13 @@ async function identifyText(query: string): Promise<{ name: string; brand?: stri
     const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const match = (body.choices?.[0]?.message?.content ?? "").match(/\{[\s\S]*\}/);
     if (!match) return null;
-    const parsed = JSON.parse(match[0]) as { name?: string; brand?: string; category?: string };
+    const parsed = JSON.parse(match[0]) as { name?: string; brand?: string; category?: string; related?: string[] };
     const name = (parsed.name || "").trim();
     if (!name || /^(this frame|unknown|photo|item|product)$/i.test(name)) return null;
-    return { name, brand: parsed.brand || undefined, category: parsed.category || undefined };
+    const related = Array.isArray(parsed.related)
+      ? parsed.related.map((row) => String(row).trim()).filter((row) => row && row.toLowerCase() !== name.toLowerCase()).slice(0, 8)
+      : [];
+    return { name, brand: parsed.brand || undefined, category: parsed.category || undefined, related };
   } catch {
     return null;
   } finally {
@@ -191,24 +194,26 @@ export const enrichHunt = createServerFn({ method: "POST" })
       (grocery || catHint === "beauty" || catHint === "pharmacy" || catHint === "home" || (!tryGames && !bookish));
 
     const jobs: Promise<void>[] = [];
+    let grokCat: string | undefined;
+    let wikiCat: string | undefined;
 
-    if (!isUpc && !isAisleQuery(q) && !tcg && !isGameQuery(q) && !isBookQuery(q) && !looksGrocery(q) && !isToyQuery(q)) {
+    if (!isUpc && !isAisleQuery(q)) {
       jobs.push(
         identifyText(q).then((named) => {
           if (!named) return;
           if (named.name) identified ??= { name: named.name };
-          if (named.category && !isTradingCard(q)) category = named.category;
+          if (named.category) grokCat = named.category;
+          if (named.related?.length && candidates.length === 0) {
+            candidates = named.related.map((name) => ({ name, hint: "Related" }));
+          }
         }),
       );
-    }
-
-    if (!isAisleQuery(q) && !isUpc) {
       jobs.push(
         wikiIdentify(q).then((row) => {
           if (!row) return;
           if (row.image) image ??= row.image;
           if (row.name) identified ??= { name: row.name };
-          if (row.category && !isTradingCard(q)) category = row.category;
+          if (row.category) wikiCat = row.category;
         }),
       );
     }
@@ -299,6 +304,9 @@ export const enrichHunt = createServerFn({ method: "POST" })
     }
 
     await Promise.allSettled(jobs);
+    if (tcg) category = "collectibles";
+    else if (grokCat) category = grokCat;
+    else if (wikiCat && !catHint) category = wikiCat;
     if (!image && !isAisleQuery(q)) {
       const cover = await coverFallback(q, category || catHint || (isGameQuery(q) ? "games" : isBookQuery(q) ? "books" : isToyQuery(q) ? "home" : ""));
       if (cover) image = cover;
