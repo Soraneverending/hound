@@ -506,7 +506,7 @@ export function isGameQuery(q: string) {
 }
 
 const BOOK_HINT =
-  /book|novel|isbn|hardcover|paperback|manga|manhwa|manhua|graphic novel|omnibus|tankobon|light novel|kodansha|viz media|dark horse|yen press|seven seas|shonen|shounen|comic book|berserk|one piece|naruto|bleach|attack on titan|demon slayer|kimetsu|jujutsu kaisen|chainsaw man|spy x family|my hero academia|death note|tokyo ghoul|vagabond|vinland saga|fullmetal|hunter x hunter|dragon ball|akira|sandman|watchmen|walking dead|harry potter|lord of the rings|hobbit|atomic habits/;
+  /book|novel|isbn|hardcover|paperback|manga|manhwa|manhua|graphic novel|omnibus|tankobon|light novel|kodansha|viz media|dark horse|yen press|seven seas|shonen|shounen|jump comics|comic book|berserk|one piece|naruto|bleach|attack on titan|demon slayer|kimetsu|jujutsu kaisen|chainsaw man|spy x family|my hero academia|death note|tokyo ghoul|vagabond|vinland saga|fullmetal|hunter x hunter|dragon ball|akira|sandman|watchmen|walking dead|harry potter|lord of the rings|hobbit|atomic habits|shaman king|jojo|one punch|black clover|haikyuu|made in abyss|takei/;
 
 export function isBookQuery(q: string) {
   const s = q.toLowerCase();

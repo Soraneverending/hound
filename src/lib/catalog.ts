@@ -349,6 +349,22 @@ export const PRODUCTS: Product[] = [
     image: "https://covers.openlibrary.org/b/isbn/9781506711980-L.jpg",
   },
   {
+    id: "shaman-king",
+    name: "Shaman King",
+    brand: "Hiroyuki Takei",
+    category: "books",
+    upc: "9781569319000",
+    aliases: [
+      "shaman king",
+      "shaman king manga",
+      "shaman king vol 1",
+      "hiroyuki takei",
+    ],
+    typical: 12.99,
+    alternatives: ["berserk-deluxe-1"],
+    image: "https://covers.openlibrary.org/b/isbn/9781569319000-L.jpg",
+  },
+  {
     id: "atomic-habits",
     name: "Atomic Habits",
     brand: "James Clear",

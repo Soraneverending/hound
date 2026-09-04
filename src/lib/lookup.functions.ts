@@ -197,9 +197,9 @@ export const identifyPhoto = createServerFn({ method: "POST" })
     if (!apiKey) {
       return { ok: false as const, error: "Vision is unavailable here. Type a name or scan a barcode." };
     }
-    const image = data.image.startsWith("data:") ? data.image : data.image.slice(0, 120_000);
+    const image = data.image.startsWith("data:") ? data.image : data.image.slice(0, 400_000);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const timer = setTimeout(() => ctrl.abort(), 18000);
     try {
       const res = await fetch("https://api.x.ai/v1/chat/completions", {
         method: "POST",
@@ -209,7 +209,7 @@ export const identifyPhoto = createServerFn({ method: "POST" })
         },
         body: JSON.stringify({
           model: "grok-4.5",
-          max_tokens: 64,
+          max_tokens: 180,
           temperature: 0,
           messages: [
             {
@@ -217,7 +217,7 @@ export const identifyPhoto = createServerFn({ method: "POST" })
               content: [
                 {
                   type: "text",
-                  text: 'JSON only: {"name":"","brand":"","upc":"","category":"games|groceries|clothes|electronics|pharmacy|home|books|collectibles|cars|beauty"}. Cards = collectibles. Prefer card name + set.',
+                  text: 'JSON only: {"name":"","brand":"","upc":"","category":"games|groceries|clothes|electronics|pharmacy|home|books|collectibles|cars|beauty"}. Read the printed title on the object. Manga, comics, and books = books. Video games = games. Cereal and food = groceries. Use the name a shopper would type (e.g. "Shaman King", "Frosted Flakes", "Yakuza Like a Dragon"). Never return placeholders like "this frame", "unknown", "photo", "cover", or "item". If you cannot read a title, name must be "".',
                 },
                 { type: "image_url", image_url: { url: image } },
               ],
@@ -237,9 +237,14 @@ export const identifyPhoto = createServerFn({ method: "POST" })
         upc?: string;
         category?: string;
       };
+      const junk = /^(this frame|unknown|photo|image|cover|item|product|untitled|n\/a)$/i;
+      const name = [parsed.brand, parsed.name].filter(Boolean).join(" ").trim() || parsed.name || "";
+      if (!name || junk.test(name.trim())) {
+        return { ok: false as const, error: "Could not read the title. Type what you see." };
+      }
       return {
         ok: true as const,
-        name: [parsed.brand, parsed.name].filter(Boolean).join(" ").trim() || parsed.name || "",
+        name,
         brand: parsed.brand || "",
         upc: parsed.upc?.replace(/\D/g, "") || "",
         category: parsed.category || "",

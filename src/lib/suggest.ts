@@ -75,9 +75,10 @@ const AISLES: { keys: string[]; items: Suggestion[] }[] = [
     ],
   },
   {
-    keys: ["book", "books", "manga", "comic", "comics", "graphic novel", "berserk"],
+    keys: ["book", "books", "manga", "comic", "comics", "graphic novel", "berserk", "shaman king"],
     items: [
       { q: "Berserk Deluxe Volume 1", label: "Berserk Deluxe Vol. 1", hint: "Dark Horse · B&N", image: "https://covers.openlibrary.org/b/isbn/9781506711980-L.jpg", category: "books" },
+      { q: "Shaman King", label: "Shaman King", hint: "Takei · manga", image: "https://covers.openlibrary.org/b/isbn/9781569319000-L.jpg", category: "books" },
       { q: "Atomic Habits", label: "Atomic Habits", hint: "James Clear", image: "https://covers.openlibrary.org/b/isbn/9780735211292-M.jpg", category: "books" },
       { q: "One Piece Vol. 1", label: "One Piece Vol. 1", hint: "VIZ · manga", category: "books" },
       { q: "Dune", label: "Dune", hint: "Frank Herbert", image: "https://covers.openlibrary.org/b/isbn/9780441172719-M.jpg", category: "books" },

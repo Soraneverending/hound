@@ -7,6 +7,8 @@ function drawJpeg(bitmap: ImageBitmap, maxEdge: number, quality: number) {
   canvas.height = height;
   const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) return "";
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bitmap, 0, 0, width, height);
   return canvas.toDataURL("image/jpeg", quality);
 }
@@ -14,12 +16,12 @@ function drawJpeg(bitmap: ImageBitmap, maxEdge: number, quality: number) {
 export async function readFrame(file: File) {
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file, { resizeWidth: 512, resizeQuality: "low" } as ImageBitmapOptions);
+    bitmap = await createImageBitmap(file, { resizeWidth: 1024, resizeQuality: "high" } as ImageBitmapOptions);
   } catch {
     bitmap = await createImageBitmap(file);
   }
-  const shot = drawJpeg(bitmap, 480, 0.62);
-  const vision = drawJpeg(bitmap, 240, 0.4);
+  const shot = drawJpeg(bitmap, 720, 0.78);
+  const vision = drawJpeg(bitmap, 768, 0.84);
   bitmap.close();
   return { shot, vision };
 }

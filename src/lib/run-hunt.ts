@@ -248,8 +248,10 @@ export async function runFromImage(file: File) {
       await runHunt(q, "vision", { category: id.category, brand: id.brand, image: cover });
       return;
     }
+    useHound.getState().setResult(null);
+    useHound.getState().setQuery("");
     setHunting(false, "");
-    setNotice(id.ok ? "Could not name that item." : id.error);
+    setNotice(id.ok ? "Could not read the title. Type what you see." : id.error);
   } catch {
     useHound.getState().setHunting(false, "");
     useHound.getState().setNotice("Could not read that photo.");
