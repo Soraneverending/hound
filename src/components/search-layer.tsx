@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { useHound } from "@/lib/hound-store";
 import { goBack, runHunt } from "@/lib/run-hunt";
-import { kickLayout } from "@/lib/shell-height";
+import { restoreRest } from "@/lib/shell-height";
 
 export function HuntTop() {
   return <div className="h-2 bg-bg" />;
@@ -59,20 +59,17 @@ export function SearchDock() {
           inputMode="search"
           enterKeyHint="search"
           data-hound-search="1"
+          name="q"
           value={query}
           placeholder="Name or title"
           autoCapitalize="off"
           autoCorrect="off"
           autoComplete="off"
           spellCheck={false}
-          onFocus={(e) => {
-            document.documentElement.classList.add("hound-kb");
-            setSearchOpen(true);
-            e.currentTarget.focus({ preventScroll: true });
-          }}
+          onFocus={() => setSearchOpen(true)}
           onBlur={() => {
-            document.documentElement.classList.remove("hound-kb");
-            kickLayout();
+            restoreRest();
+            if (!useHound.getState().query.trim()) setSearchOpen(false);
           }}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -87,7 +84,7 @@ export function SearchDock() {
             onClick={() => {
               setQuery("");
               setSearchOpen(true);
-              inputRef.current?.focus({ preventScroll: true });
+              inputRef.current?.focus();
             }}
             className="absolute top-1/2 right-16 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full text-muted"
           >

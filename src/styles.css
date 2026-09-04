@@ -178,7 +178,7 @@ html[data-theme="harbor"] {
 }
 
 .app-shell {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 1;
   display: flex;
@@ -209,7 +209,7 @@ html[data-theme="harbor"] {
   touch-action: pan-y;
   pointer-events: auto;
   overflow-anchor: none;
-  padding-bottom: calc(12px + var(--bottom-stack-h, 120px));
+  padding-bottom: 12px;
 }
 
 .app-scroll button,
@@ -225,19 +225,6 @@ html[data-theme="harbor"] {
   pointer-events: none;
   -webkit-user-drag: none;
   user-select: none;
-}
-
-.bottom-stack {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  background: var(--color-bg, #f3efe6);
-}
-
-html.hound-kb .tab-bar {
-  display: none;
 }
 
 .tab-bar {
