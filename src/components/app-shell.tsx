@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
 import { AislesScreen } from "@/components/screens/aisles";
 import { HuntScreen, LiveSearchPanel } from "@/components/screens/hunt";
-import { HuntSearch } from "@/components/search-layer";
+import { HuntTop, SearchDock } from "@/components/search-layer";
 import { PinsScreen } from "@/components/screens/pins";
 import { HoundMark } from "@/components/hound-mark";
 import { PinPulse } from "@/components/pin-pulse";
@@ -62,7 +62,7 @@ export function AppShell() {
       <PinPulse />
       <div className="app-chrome">
         {tab === "hunt" ? (
-          <HuntSearch />
+          <HuntTop />
         ) : (
           <div className="brand-row flex items-center justify-between gap-3 pt-3 pr-16 pb-2 pl-16">
             <div className="flex min-w-0 items-center gap-2">
@@ -85,6 +85,7 @@ export function AppShell() {
           </Suspense>
         ) : null}
       </main>
+      {tab === "hunt" ? <SearchDock /> : null}
       {searchOpen ? null : <TabBar />}
       <SnagSheet />
     </div>
