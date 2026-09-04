@@ -23,18 +23,19 @@ const AISLES: { keys: string[]; items: Suggestion[] }[] = [
     ],
   },
   {
-    keys: ["cereal", "cheerios", "frosted", "flakes", "kellogg", "breakfast", "bran", "raisin"],
+    keys: ["cereal", "ceral", "cheerios", "frosted", "flakes", "kellogg", "breakfast", "bran", "raisin"],
     items: [
       { q: "Honey Nut Cheerios", label: "Honey Nut Cheerios", hint: "Vons vs Costco", image: "/covers/cheerios.jpg", category: "groceries" },
       { q: "Kellogg's Frosted Flakes", label: "Frosted Flakes", hint: "Vons · Walmart · Costco", image: "https://world.openfoodfacts.org/images/products/003/800/084/5217/front_en.4.400.jpg", category: "groceries" },
-      { q: "Cinnamon Toast Crunch", label: "Cinnamon Toast Crunch", hint: "Target · Vons", category: "groceries" },
-      { q: "Lucky Charms", label: "Lucky Charms", hint: "Walmart · Costco", category: "groceries" },
+      { q: "Cinnamon Toast Crunch", label: "Cinnamon Toast Crunch", hint: "Target · Vons", image: "https://world.openfoodfacts.org/images/products/001/600/014/3167/front_en.14.400.jpg", category: "groceries" },
+      { q: "Lucky Charms", label: "Lucky Charms", hint: "Walmart · Costco", image: "https://world.openfoodfacts.org/images/products/001/600/014/3174/front_en.6.400.jpg", category: "groceries" },
+      { q: "Cap'n Crunch", label: "Cap'n Crunch", hint: "Walmart · Vons", category: "groceries" },
     ],
   },
   {
     keys: ["yogurt", "yoghurt", "chobani", "fage", "yoplait", "greek yogurt", "dairy"],
     items: [
-      { q: "Chobani Greek Yogurt", label: "Chobani Greek Yogurt", hint: "Vons · Ralphs · Target", category: "groceries" },
+      { q: "Chobani Greek Yogurt", label: "Chobani Greek Yogurt", hint: "Vons · Ralphs · Target", image: "https://world.openfoodfacts.org/images/products/089/421/200/1366/front_en.10.400.jpg", category: "groceries" },
       { q: "Fage Total 5% yogurt", label: "Fage Total 5%", hint: "Whole Foods · Vons", category: "groceries" },
       { q: "Yoplait Original yogurt", label: "Yoplait Original", hint: "Stater Bros · Walmart", category: "groceries" },
       { q: "Siggi's Icelandic yogurt", label: "Siggi's", hint: "Trader Joe's · Target", category: "groceries" },
@@ -93,6 +94,26 @@ const AISLES: { keys: string[]; items: Suggestion[] }[] = [
       { q: "LEGO Technic", label: "LEGO Technic", hint: "Cars & machines", category: "home" },
       { q: "LEGO Harry Potter Hogwarts Castle", label: "Hogwarts Castle", hint: "Harry Potter set", category: "home" },
       { q: "LEGO DUPLO", label: "LEGO DUPLO", hint: "For little builders", category: "home" },
+    ],
+  },
+  {
+    keys: ["shoe", "shoes", "sneaker", "sneakers", "kicks", "nike"],
+    items: [
+      { q: "Nike Dunk Low", label: "Nike Dunk Low", hint: "Nike · sneakers", category: "clothes" },
+      { q: "Nike Air Force 1", label: "Nike Air Force 1", hint: "Nike", category: "clothes" },
+      { q: "Nike Air Max 90", label: "Nike Air Max 90", hint: "Nike", category: "clothes" },
+      { q: "Vans Sk8-Hi", label: "Vans Sk8-Hi", hint: "Vans", category: "clothes" },
+      { q: "New Balance 550", label: "New Balance 550", hint: "New Balance", category: "clothes" },
+      { q: "Adidas Samba", label: "Adidas Samba", hint: "Adidas", category: "clothes" },
+    ],
+  },
+  {
+    keys: ["ps5", "playstation", "playstation 5", "play station 5", "console"],
+    items: [
+      { q: "PlayStation 5 Slim", label: "PlayStation 5 Slim", hint: "Disc · Sony", image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/PlayStation_5_console_and_controller.jpg/440px-PlayStation_5_console_and_controller.jpg", category: "electronics" },
+      { q: "PlayStation 5 Digital Edition", label: "PS5 Digital Edition", hint: "No disc drive", category: "electronics" },
+      { q: "DualSense Wireless Controller", label: "DualSense controller", hint: "PS5", category: "electronics" },
+      { q: "PlayStation 5 Pro", label: "PS5 Pro", hint: "Sony", category: "electronics" },
     ],
   },
 ];
@@ -171,10 +192,14 @@ const FRANCHISES: { keys: string[]; items: Suggestion[] }[] = [
 ];
 
 export function isAisleQuery(q: string) {
-  const s = q.trim().toLowerCase();
+  const s = normalizeQuery(q);
   if (!s) return false;
-  if (s.split(/\s+/).length > 2) return false;
-  return /^(foods?|grocer(y|ies)|produce|snacks?|dairy|yogurt|yoghurt|drinks?|beverages?|meat|frozen|pantry|clothes?|shoes?|makeup|beauty|skincare|games?|cards?|books?|toys?)$/i.test(s);
+  if (s.split(" ").length > 3) return false;
+  const resolved = normalizeQuery(resolveQuery(q));
+  if (AISLES.some((a) => a.keys.some((k) => s === k || resolved === k))) return true;
+  return /^(foods?|grocer(y|ies)|produce|snacks?|dairy|yogurt|yoghurt|drinks?|beverages?|meat|frozen|pantry|clothes?|shoes?|sneakers?|makeup|beauty|skincare|games?|cards?|books?|toys?|cereal|nike|ps5|playstation|electronics)$/i.test(
+    s,
+  );
 }
 
 export function suggest(query: string, recent: { q: string }[] = []): Suggestion[] {
@@ -224,7 +249,7 @@ export function suggest(query: string, recent: { q: string }[] = []): Suggestion
     }
   }
 
-  return out.slice(0, 6);
+  return out.slice(0, 8);
 }
 
 export function isFranchiseQuery(q: string) {

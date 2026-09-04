@@ -289,16 +289,20 @@ export function resolveQuery(raw: string) {
     return hit || t;
   });
   const corrected = tokens.join(" ");
-  let best: { name: string; d: number } | undefined;
-  for (const p of PRODUCTS) {
-    for (const alias of [p.name, p.brand, ...p.aliases]) {
-      const n = normalizeQuery(alias);
-      if (!n) continue;
-      const d = edits(n, corrected);
-      if (d <= 2 && (!best || d < best.d)) best = { name: p.name, d };
+  if (corrected.length >= 5) {
+    let best: { name: string; d: number } | undefined;
+    for (const p of PRODUCTS) {
+      for (const alias of [p.name, p.brand, ...p.aliases]) {
+        const n = normalizeQuery(alias);
+        if (!n || Math.abs(n.length - corrected.length) > 2) continue;
+        const d = edits(n, corrected);
+        if (d <= 2 && (!best || d < best.d)) best = { name: p.name, d };
+      }
     }
+    if (best && best.d <= 2) return best.name;
   }
-  if (best && best.d <= 2) return best.name;
+  if (corrected === "ps5") return "PS5";
+  if (corrected === "cereal") return "Cereal";
   return tokens.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
@@ -309,10 +313,10 @@ export function findProduct(query: string): Product | undefined {
   if (!q) return undefined;
   const exact = PRODUCTS.find((p) => {
     if (normalizeQuery(p.name) === q) return true;
-    if (normalizeQuery(p.brand + " " + p.name).includes(q)) return true;
-    return p.aliases.some((a) => normalizeQuery(a) === q || q.includes(normalizeQuery(a)) || normalizeQuery(a).includes(q));
+    return p.aliases.some((a) => normalizeQuery(a) === q);
   });
   if (exact) return exact;
+  if (q.length < 6) return undefined;
   const resolved = normalizeQuery(resolveQuery(raw));
   if (resolved && resolved !== q) {
     return PRODUCTS.find((p) => {
@@ -481,9 +485,9 @@ export function guessCategory(q: string): Category {
   if (isToyQuery(s)) return "home";
   if (/funko|vinyl|collect|mtg|magic card|booster|cgc|slab/.test(s)) return "collectibles";
   if (/lipstick|foundation|mascara|sephora|fenty|concealer|blush|skincare|serum/.test(s)) return "beauty";
+  if (/airpod|headphone|\bps5\b|playstation|xbox series|console\b|phone|laptop/.test(s)) return "electronics";
   if (isGameQuery(s)) return "games";
-  if (/shirt|jean|nike|dunk|jacket|hoodie|armani|gucci|blazer|goodwill/.test(s)) return "clothes";
-  if (/airpod|headphone|switch|phone|laptop/.test(s)) return "electronics";
+  if (/shirt|jean|nike|dunk|jacket|hoodie|armani|gucci|blazer|goodwill|shoes?|sneakers?|kicks/.test(s)) return "clothes";
   if (/advil|nyquil|toothpaste|vitamin/.test(s)) return "pharmacy";
   if (looksGrocery(s) || /food|grocery|groceries|yogurt|yoghurt|milk|egg|cereal|chicken|avocado|banana|coke|cheerios|snack|produce|dairy|bread|cheese|chobani|fage|yoplait|frosted flakes|kellogg|lucky charms|froot loops|fruit loops|raisin bran|special k|cinnamon toast crunch|corn flakes|apple jacks|captain crunch|cap'n crunch|wheaties|granola|oatmeal|coffee|oreos?|doritos|cheetos|lays/.test(s)) {
     return "groceries";

@@ -175,6 +175,10 @@ export async function runHunt(
     category: local.product.category,
     image: image && (image.startsWith("http") || image.startsWith("/")) ? image : undefined,
   });
+  if (isAisleQuery(q)) {
+    if (seq === huntSeq) setHunting(false, "");
+    return;
+  }
   try {
     const live = await enrichHunt({ data: { query: q, category: meta.category } });
     if (seq !== huntSeq) return;

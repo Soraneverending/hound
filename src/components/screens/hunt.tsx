@@ -338,12 +338,50 @@ function ResultsPanel({
   const over = Boolean(budget && floor && floor.total > budget);
   const liveCount = offers.filter((o) => o.live).length;
 
+  const aisle = isAisleQuery(result.product.name);
+  const aisleItems = aisle ? suggest(result.product.name) : [];
+
   return (
     <div className="flex flex-col gap-5">
       <button type="button" {...pressProps(onBack)} className="flex h-11 w-max items-center gap-1 text-sm text-muted select-none">
         <ArrowLeft className="size-4" />
         New hunt
       </button>
+
+      {aisle ? (
+        <>
+          <div>
+            <p className="text-xs font-medium tracking-[0.14em] text-muted uppercase">
+              {categoryLabel(result.product.category)} · pick one
+            </p>
+            <h2 className="font-display mt-1 text-2xl leading-tight tracking-[-0.03em]">{result.product.name}</h2>
+            <p className="mt-1 text-sm text-muted">Same aisle, real products — tap one to hunt prices.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {aisleItems.map((h) => (
+              <button
+                key={h.q}
+                type="button"
+                {...pressProps(() => startHunt(h.q, h.image, h.category))}
+                className="overflow-hidden rounded-2xl bg-paper text-left shadow-[var(--shadow-card)] select-none"
+              >
+                <ProductCover
+                  name={h.label}
+                  brand=""
+                  category={h.category}
+                  src={h.image}
+                  className="aspect-square w-full rounded-none"
+                />
+                <span className="block px-3 py-2">
+                  <span className="block line-clamp-2 text-sm font-medium leading-snug">{h.label}</span>
+                  <span className="mt-0.5 block truncate text-[11px] text-muted">{h.hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
 
       <div className="flex items-start gap-3">
         <ProductCover
@@ -458,36 +496,6 @@ function ResultsPanel({
 
       {hunting ? <p className="text-sm text-muted">{status}</p> : null}
 
-      {isAisleQuery(result.product.name) && suggest(result.product.name).length > 0 && (
-        <section>
-          <p className="text-xs font-medium tracking-[0.16em] text-muted uppercase">
-            {isAisleQuery(result.product.name) ? "Pick a specific item" : "Also try"}
-          </p>
-          <div className="mt-2 flex flex-col gap-1">
-            {suggest(result.product.name).slice(0, 4).map((h) => (
-              <button
-                key={h.q}
-                type="button"
-                {...pressProps(() => startHunt(h.q, h.image, h.category))}
-                className="flex items-center gap-3 rounded-2xl bg-paper px-3 py-2.5 text-left shadow-[var(--shadow-card)] select-none"
-              >
-                {h.image ? (
-                  <img src={h.image} alt="" className="size-10 rounded-lg object-cover" />
-                ) : (
-                  <span className="grid size-10 place-items-center rounded-lg bg-desk text-sm font-medium text-muted">
-                    {h.label.slice(0, 1)}
-                  </span>
-                )}
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{h.label}</span>
-                  <span className="block truncate text-xs text-muted">{h.hint}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
       {isTradingCard(`${result.product.brand} ${result.product.name}`) ? <TcgShops name={result.product.name} /> : null}
 
       {isGame ? (
@@ -584,6 +592,8 @@ function ResultsPanel({
             ))}
           </div>
         </section>
+      )}
+        </>
       )}
 
       <RecentHunts />
