@@ -53,53 +53,54 @@ export function AppShell() {
       const scroll = getScroll();
       if (scroll instanceof HTMLElement) scroll.scrollTop = 0;
     };
-    const afterKeyboard = () => {
+    // Only unwind AFTER the keyboard is gone. Resetting on visualViewport
+    // resize WHILE focused fights iOS mid-open and matches the ~3s jump.
+    const afterKeyboardClosed = () => {
+      if (root.classList.contains("hound-search-focus")) return;
       reset();
       window.setTimeout(reset, 50);
       window.setTimeout(reset, 280);
       window.setTimeout(reset, 500);
     };
     const isSearch = (t: EventTarget | null) =>
-      t instanceof HTMLElement && t.matches("[data-hound-search=\"1\"]");
+      t instanceof HTMLElement && t.matches('[data-hound-search="1"]');
 
     const onFocusIn = (e: FocusEvent) => {
       if (!isSearch(e.target)) return;
-      // Mark focus without hiding chrome (html.hound-typing hide was rejected).
       root.classList.add("hound-search-focus");
-      reset();
+      // Do not scroll-reset here — iOS is still opening the keyboard.
     };
     const onFocusOut = (e: FocusEvent) => {
       if (!isSearch(e.target)) return;
       const next = e.relatedTarget;
-      if (next instanceof HTMLElement && next.closest("[data-hound-search=\"1\"], .app-chrome")) {
+      if (next instanceof HTMLElement && next.closest('[data-hound-search="1"], .app-chrome')) {
         return;
       }
       root.classList.remove("hound-search-focus");
-      afterKeyboard();
+      afterKeyboardClosed();
     };
-    // If iOS tries to pan by scrolling .app-scroll while typing, snap it back.
-    // Event-driven on the scroll container — not a visualViewport rAF counter-pan.
+    const onViewportResize = () => {
+      // Keyboard open/close both fire resize. Only clean up when search blur already cleared the class.
+      afterKeyboardClosed();
+    };
     const onScroll = () => {
       if (!root.classList.contains("hound-search-focus")) return;
       const scroll = getScroll();
       if (scroll instanceof HTMLElement && scroll.scrollTop !== 0) scroll.scrollTop = 0;
-      if (window.scrollY !== 0) window.scrollTo(0, 0);
     };
 
     window.addEventListener("focusin", onFocusIn);
     window.addEventListener("focusout", onFocusOut);
-    window.addEventListener("pageshow", afterKeyboard);
-    window.addEventListener("scroll", onScroll, true);
-    window.visualViewport?.addEventListener("resize", afterKeyboard);
+    window.addEventListener("pageshow", afterKeyboardClosed);
+    window.visualViewport?.addEventListener("resize", onViewportResize);
     const scrollEl = getScroll();
     scrollEl?.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       root.classList.remove("hound-search-focus");
       window.removeEventListener("focusin", onFocusIn);
       window.removeEventListener("focusout", onFocusOut);
-      window.removeEventListener("pageshow", afterKeyboard);
-      window.removeEventListener("scroll", onScroll, true);
-      window.visualViewport?.removeEventListener("resize", afterKeyboard);
+      window.removeEventListener("pageshow", afterKeyboardClosed);
+      window.visualViewport?.removeEventListener("resize", onViewportResize);
       scrollEl?.removeEventListener("scroll", onScroll);
     };
   }, []);
