@@ -70,7 +70,7 @@ function nameFits(query: string, name?: string) {
 
 function categoryFromBlurb(text: string): string | undefined {
   const s = text.toLowerCase();
-  if (/trading card|collectible card|\btcg\b/.test(s)) return "collectibles";
+  if (/trading card|collectible card|\btcg\b|card sleeve|deck box|playmat|dragon shield/.test(s)) return "collectibles";
   if (/\bmanga\b|\banime\b|comic book|graphic novel|light novel|isbn|\bnovel\b|written by|author of|book series|weekly shōnen|shonen jump|seinen manga|shōjo|shojo/.test(s)) return "books";
   if (/video game|stealth game|action rpg|role.playing|playstation|xbox|\bnintendo\b|steam (game|page)/.test(s)) return "games";
   if (/breakfast cereal|snack food|soft drink|confection|grocery|brand of food|ice cream|yogurt/.test(s)) return "groceries";
@@ -281,7 +281,7 @@ export const identifyPhoto = createServerFn({ method: "POST" })
               content: [
                 {
                   type: "text",
-                  text: 'JSON only: {"name":"","brand":"","upc":"","category":"games|groceries|clothes|electronics|pharmacy|home|books|collectibles|cars|beauty"}. Read the printed title on the object. Manga, comics, and books = books. Video games = games. Cereal and food = groceries. Use the name a shopper would type (e.g. "Shaman King", "Frosted Flakes", "Yakuza Like a Dragon"). Never return placeholders like "this frame", "unknown", "photo", "cover", or "item". If you cannot read a title, name must be "".',
+                  text: 'JSON only: {"name":"","brand":"","upc":"","category":"games|groceries|clothes|electronics|pharmacy|home|books|collectibles|cars|beauty"}. Read the printed title on the object. Manga, comics, and books = books. Video games (PlayStation/Xbox/Switch/Steam titles) = games. Card sleeves, deck boxes, playmats, binders, and TCG supplies = collectibles — never games. Cereal and food = groceries. Use the name a shopper would type (e.g. "Shaman King", "Dragon Shield Amethyst Matte Sleeves", "Frosted Flakes"). Never duplicate the brand. Never return placeholders like "this frame", "unknown", "photo", "cover", or "item". If you cannot read a title, name must be "".',
                 },
                 { type: "image_url", image_url: { url: image } },
               ],

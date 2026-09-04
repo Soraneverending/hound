@@ -3,6 +3,7 @@ import { isAisleQuery, franchiseMatches, isAddonTitle } from "@/lib/suggest";
 import { useHound } from "@/lib/hound-store";
 import { enrichHunt, identifyPhoto } from "@/lib/lookup.functions";
 import { readFrame } from "@/lib/image";
+import { isTradingCard } from "@/lib/stores";
 import type { Category, HuntMatch, HuntResult, Product } from "@/lib/types";
 
 const SHOTS = new Map<string, string>();
@@ -158,7 +159,11 @@ export async function runHunt(
   remember(q, image);
   if (!hint?.restore) setHunting(true, "Sniffing live prices…");
   const meta = {
-    category: hint?.category && isCategory(hint.category) ? (hint.category as Category) : undefined,
+    category: isTradingCard(q)
+      ? "collectibles"
+      : hint?.category && isCategory(hint.category)
+        ? (hint.category as Category)
+        : undefined,
     brand: hint?.brand,
     image,
   };

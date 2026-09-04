@@ -140,6 +140,8 @@ function HomePanel({ hunting, status }: { hunting: boolean; status: string }) {
 }
 
 export function SearchChrome() {
+  // LOCKED working search: real input, inline under Hound. Do not hide chrome,
+  // open a sheet, park a trap field, or translate the page.
   const query = useHound((s) => s.query);
   const setQuery = useHound((s) => s.setQuery);
   const recent = useHound((s) => s.recent ?? []);
@@ -309,7 +311,8 @@ function ResultsPanel({
     isFloor: floor ? o.id === floor.id : false,
     nearFloor: Boolean(floor && !o.searchOnly && o.total <= Math.max(floor.total * 1.08, floor.total + 4)),
   }));
-  const isGame = result.product.category === "games";
+  const isGame =
+    result.product.category === "games" && !isTradingCard(`${result.product.brand} ${result.product.name}`);
   const keyRank = (id: string) => {
     const i = (KEY_HEAD as readonly string[]).indexOf(id);
     return i < 0 ? 20 : i;
@@ -598,7 +601,7 @@ function coverForQuery(q: string) {
   return shotFor(q) || findProduct(q)?.image;
 }
 
-const TCG_SHOPS = ["tcgplayer", "cardkingdom", "ebay"] as const;
+const TCG_SHOPS = ["tcgplayer", "cardkingdom", "coolstuff", "amazon", "target", "walmart", "ebay"] as const;
 
 function TcgShops({ name }: { name: string }) {
   return <ShopChips ids={TCG_SHOPS} name={name} label="Search" />;

@@ -404,6 +404,13 @@ export function alternativesOf(product: Product, budget?: number) {
   return pool.slice(0, 3);
 }
 
+function tidyName(s: string) {
+  return s
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b(\S+(?:\s+\S+){0,3})\s+\1\b/gi, "$1");
+}
+
 export function huntLocal(
   query: string,
   extra: Offer[] = [],
@@ -411,18 +418,19 @@ export function huntLocal(
   source: HuntResult["source"] = "search",
   hint?: { category?: Category; brand?: string; image?: string },
 ): HuntResult {
-  const resolved = resolveQuery(query);
+  const resolved = tidyName(resolveQuery(query));
   const found = findProduct(resolved) || findProduct(query);
   const blob = `${hint?.brand ?? ""} ${resolved}`;
   const guessed = guessCategory(blob);
   const image = hint?.image || found?.image;
+  const tcg = isTradingCard(blob) || isTradingCard(resolved);
   const product: Product = found
     ? { ...found, image: image || found.image }
     : {
         id: `q-${hash(normalizeQuery(resolved) || "item")}`,
         name: resolved || titleCase(query.trim() || "Scanned item"),
         brand: hint?.brand && hint.brand !== "Unknown" ? hint.brand : brandFrom(resolved),
-        category: isTradingCard(blob) ? "collectibles" : hint?.category && isCategory(hint.category) ? hint.category : guessed,
+        category: tcg ? "collectibles" : hint?.category && isCategory(hint.category) ? hint.category : guessed,
         upc: /^\d{8,14}$/.test(query.trim()) ? query.trim() : "",
         aliases: [query, resolved],
         typical: typicalFor(resolved),
@@ -431,7 +439,8 @@ export function huntLocal(
         image,
       };
 
-  const offers = rankOffers(product, extra, {
+  const extras = tcg ? extra.filter((o) => STORE_MAP[o.storeId]?.kind !== "digital") : extra;
+  const offers = rankOffers(product, extras, {
     paypalOnly: opts?.paypalOnly,
     pickupOnly: opts?.pickupOnly,
     newOnly: opts?.newOnly,
@@ -465,6 +474,7 @@ function titleCase(s: string) {
 }
 
 function brandFrom(q: string) {
+  if (/dragon shield/i.test(q)) return "Dragon Shield";
   if (isTradingCard(q) || /wizards of the coast|magic:? the gathering|\bmtg\b/i.test(q)) return "Wizards of the Coast";
   if (/pokemon|pokémon/i.test(q)) return "Pokémon";
   if (/metal gear|\bmgs\b|snake eater|konami/i.test(q)) return "Konami";

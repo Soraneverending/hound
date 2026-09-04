@@ -245,7 +245,18 @@ export const STORES: Store[] = [
 
 export const STORE_MAP = Object.fromEntries(STORES.map((s) => [s.id, s])) as Record<string, Store>;
 
-const TCG_IDS = new Set(["tcgplayer", "cardkingdom", "trollandtoad", "coolstuff", "ebay"]);
+const TCG_IDS = new Set([
+  "tcgplayer",
+  "cardkingdom",
+  "trollandtoad",
+  "coolstuff",
+  "amazon",
+  "walmart",
+  "target",
+  "ebay",
+  "mercari",
+  "offerup",
+]);
 const GAME_IDS = new Set([
   "steam",
   "gog",
@@ -278,6 +289,13 @@ const GAME_IDS = new Set([
 
 export function isTradingCard(q: string) {
   const s = q.toLowerCase();
+  if (
+    /sleeve|sleeves|deck box|playmat|play mat|toploader|top loader|inner sleeve|dragon shield|ultimate guard|katana sleeves|eclipse sleeves|card sleeve|binder pages|penny sleeve/.test(
+      s,
+    )
+  ) {
+    return true;
+  }
   if (
     /mtg\b|magic:?\s*the gathering|wizards of the coast|\bsorcery\b|planeswalker|pokemon|pokémon|yugioh|yu-?gi-?oh|\btcg\b|trading card|holofoil|charizard|pikachu|sports card|topps|panini|upper deck|tragic arrogance|universes beyond|secret lair/.test(
       s,
