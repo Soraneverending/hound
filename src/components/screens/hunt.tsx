@@ -146,73 +146,101 @@ export function SearchChrome() {
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const hints = open && query.trim().length >= 2 ? suggest(query, recent) : [];
+
+  function armFocus() {
+    document.documentElement.classList.add("hound-search-focus");
+    setFocused(true);
+    setOpen(true);
+    window.scrollTo(0, 0);
+    const sc = document.querySelector(".app-scroll");
+    if (sc instanceof HTMLElement) sc.scrollTop = 0;
+  }
+
+  function disarmFocus() {
+    document.documentElement.classList.remove("hound-search-focus");
+    setFocused(false);
+    window.scrollTo(0, 0);
+    const sc = document.querySelector(".app-scroll");
+    if (sc instanceof HTMLElement) sc.scrollTop = 0;
+  }
 
   function huntNow(q = query) {
     const next = q.trim();
     if (!next) return;
     setQuery(next);
     setOpen(false);
+    disarmFocus();
     inputRef.current?.blur();
     void runHunt(next);
   }
 
   return (
     <div ref={boxRef} className="relative z-30 bg-bg px-4 pt-2 pb-2">
+      {/* Real field is parked at the top of the webview so iOS has nothing to pan to.
+          The pill below is just the face — same place as rest, never a focusing input. */}
+      <input
+        ref={inputRef}
+        data-hound-search="1"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => armFocus()}
+        onBlur={(e) => {
+          const next = e.relatedTarget;
+          if (next instanceof Node && boxRef.current?.contains(next)) return;
+          window.setTimeout(() => setOpen(false), 120);
+          disarmFocus();
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          huntNow();
+        }}
+        placeholder="Name or title"
+        enterKeyHint="search"
+        inputMode="search"
+        autoCapitalize="off"
+        autoCorrect="off"
+        autoComplete="off"
+        spellCheck={false}
+        name="q"
+        aria-label="Name or title"
+        className="hound-search-trap"
+      />
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-faint" />
-        <input
-          ref={inputRef}
-          data-hound-search="1"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={(e) => {
-            setOpen(true);
-            document.documentElement.classList.add("hound-search-focus");
-            try {
-              e.target.focus({ preventScroll: true });
-            } catch {
-              /* older webkit */
-            }
-            // Do not scrollTo(0) here — that fights the keyboard open animation.
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
+        <button
+          type="button"
+          className={`search-face h-12 w-full rounded-full bg-paper pr-[4.6rem] pl-11 text-left text-base shadow-[var(--shadow-card)] outline-none ring-ink/15 ${focused ? "ring-2" : ""}`}
+          onPointerDown={(e) => {
             e.preventDefault();
-            huntNow();
+            e.stopPropagation();
+            armFocus();
+            const el = inputRef.current;
+            if (!el) return;
+            try {
+              el.focus({ preventScroll: true });
+            } catch {
+              el.focus();
+            }
           }}
-          onBlur={(e) => {
-            const next = e.relatedTarget;
-            if (next instanceof Node && boxRef.current?.contains(next)) return;
-            window.setTimeout(() => setOpen(false), 120);
-            document.documentElement.classList.remove("hound-search-focus");
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            const sc = document.querySelector(".app-scroll");
-            if (sc instanceof HTMLElement) sc.scrollTop = 0;
-            window.setTimeout(() => {
-              window.scrollTo(0, 0);
-              if (sc instanceof HTMLElement) sc.scrollTop = 0;
-            }, 280);
-          }}
-          placeholder="Name or title"
-          enterKeyHint="search"
-          inputMode="search"
-          autoCapitalize="off"
-          autoCorrect="off"
-          autoComplete="off"
-          spellCheck={false}
-          name="q"
-          className="h-12 w-full rounded-full bg-paper pr-[4.6rem] pl-11 text-base shadow-[var(--shadow-card)] outline-none ring-ink/15 focus:ring-2"
-        />
+        >
+          {query ? (
+            <span className={`search-face-text block truncate ${focused ? "is-caret" : ""}`}>{query}</span>
+          ) : (
+            <span className={`search-face-text block truncate text-faint ${focused ? "is-caret" : ""}`}>
+              Name or title
+            </span>
+          )}
+        </button>
         <button
           type="button"
           disabled={!query.trim()}
+          onPointerDown={(e) => e.preventDefault()}
           onClick={() => huntNow()}
           className="absolute top-1.5 right-1.5 z-10 h-9 rounded-full bg-ink px-3.5 text-sm font-medium text-accent-fg disabled:opacity-40"
         >

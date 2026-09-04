@@ -240,18 +240,47 @@ html.hound-search-focus .app-scroll {
   touch-action: none;
 }
 
-/* Slightly compress chrome so the input sits higher — still under Hound, never hidden. */
-html.hound-search-focus .brand-row {
-  padding-top: 0.35rem;
-  padding-bottom: 0;
-}
-html.hound-search-focus .app-chrome .relative.z-30 {
-  padding-top: 0.15rem;
-  padding-bottom: 0.35rem;
-}
-
 [data-hound-search="1"] {
   font-size: 16px;
+}
+
+/* Invisible input parked on the top edge of the webview.
+   iOS pans to the focused field — if it's already at y=0, the page does not jump.
+   The visible pill (.search-face) is a button, not an input. */
+.hound-search-trap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 16px;
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  border: 0;
+  opacity: 0.02;
+}
+
+.search-face-text.is-caret::after {
+  content: "";
+  display: inline-block;
+  width: 1.5px;
+  height: 0.95em;
+  margin-left: 2px;
+  background: currentColor;
+  vertical-align: -0.1em;
+  animation: hound-caret 1s step-end infinite;
+}
+
+@keyframes hound-caret {
+  50% {
+    opacity: 0;
+  }
 }
 
 @media (min-width: 768px) {
