@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { AislesScreen } from "@/components/screens/aisles";
 import { HuntScreen } from "@/components/screens/hunt";
 import { SearchLaunch, SearchLayer } from "@/components/search-layer";
@@ -11,6 +11,7 @@ import { TabBar } from "@/components/tab-bar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { THEMES, normalizeTheme } from "@/lib/themes";
 import { useHound } from "@/lib/hound-store";
+import { goBack } from "@/lib/run-hunt";
 
 const BoardScreen = lazy(async () => {
   const mod = await import("@/components/screens/board");
@@ -30,6 +31,33 @@ export function AppShell() {
   const theme = useHound((s) => s.theme);
   const setTheme = useHound((s) => s.setTheme);
   const searchOpen = useHound((s) => s.searchOpen);
+  const result = useHound((s) => s.result);
+  const layer = useRef<string | null>(null);
+
+  useEffect(() => {
+    const onPop = () => {
+      goBack();
+      const s = useHound.getState();
+      layer.current = s.searchOpen ? "search" : s.result ? "result" : null;
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  useEffect(() => {
+    const next = searchOpen ? "search" : result ? "result" : null;
+    if (next === layer.current) return;
+    if (!next) {
+      layer.current = null;
+      return;
+    }
+    if (layer.current === "search" && next === "result") {
+      window.history.replaceState({ hound: next }, "");
+    } else {
+      window.history.pushState({ hound: next }, "");
+    }
+    layer.current = next;
+  }, [searchOpen, result]);
 
   useLayoutEffect(() => {
     bootFromStorage();

@@ -9,7 +9,7 @@ import { PRODUCT_MAP, KEY_HEAD, bestNew, bestTrusted, categoryLabel, findProduct
 import { suggest, isAisleQuery, isFranchiseQuery } from "@/lib/suggest";
 import { haptic } from "@/lib/haptics";
 import { useHound } from "@/lib/hound-store";
-import { runFromImage, runHunt, shotFor, unlockUi, goHome } from "@/lib/run-hunt";
+import { runFromImage, runHunt, shotFor, unlockUi, requestBack } from "@/lib/run-hunt";
 import { STORE_MAP, isTradingCard } from "@/lib/stores";
 import type { HuntResult, RankedOffer } from "@/lib/types";
 
@@ -61,7 +61,7 @@ export function HuntScreen() {
   return (
     <div className="flex flex-col gap-4 pb-4">
       {result ? (
-        <ResultsPanel result={result} hunting={hunting} status={status} onBack={() => goHome()} />
+        <ResultsPanel result={result} hunting={hunting} status={status} onBack={() => requestBack()} />
       ) : (
         <HomePanel hunting={hunting} status={status} />
       )}
@@ -344,9 +344,9 @@ function ResultsPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <button type="button" {...pressProps(onBack)} className="flex h-11 w-max items-center gap-1 text-sm text-muted select-none">
+      <button type="button" {...pressProps(onBack)} className="flex h-11 w-max items-center gap-1 text-sm font-medium select-none">
         <ArrowLeft className="size-4" />
-        New hunt
+        Back
       </button>
 
       {aisle ? (

@@ -26,6 +26,31 @@ export function goHome() {
   useHound.getState().goHome();
 }
 
+export function goBack() {
+  const s = useHound.getState();
+  if (s.searchOpen) {
+    s.setSearchOpen(false);
+    return true;
+  }
+  if (s.result || s.hunting || s.scanning) {
+    goHome();
+    return true;
+  }
+  if (s.tab !== "hunt") {
+    s.setTab("hunt");
+    return true;
+  }
+  return false;
+}
+
+export function requestBack() {
+  if (typeof window !== "undefined" && window.history.state?.hound) {
+    window.history.back();
+    return;
+  }
+  goBack();
+}
+
 export function huntIsCurrent(seq: number) {
   return seq === huntSeq;
 }

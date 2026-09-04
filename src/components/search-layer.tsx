@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { LiveSearchPanel } from "@/components/screens/hunt";
 import { useHound } from "@/lib/hound-store";
-import { runHunt } from "@/lib/run-hunt";
+import { requestBack, runHunt } from "@/lib/run-hunt";
 
 export function SearchLaunch() {
   const setSearchOpen = useHound((s) => s.setSearchOpen);
@@ -13,12 +13,23 @@ export function SearchLaunch() {
   const idle = !query.trim() && !result;
 
   return (
-    <div className="bg-bg pt-2 pr-16 pb-2 pl-16">
+    <div className="flex items-center gap-2 bg-bg pt-2 pr-16 pb-2 pl-16">
+      {result ? (
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => requestBack()}
+          className="flex h-11 shrink-0 items-center gap-1 rounded-full px-1 text-sm font-medium"
+        >
+          <ArrowLeft className="size-5" />
+          Back
+        </button>
+      ) : null}
       <button
         type="button"
         data-hound-search-launch="1"
         onClick={() => setSearchOpen(true)}
-        className="flex h-12 w-full items-center gap-3 rounded-full bg-paper px-4 text-left shadow-[var(--shadow-card)]"
+        className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full bg-paper px-4 text-left shadow-[var(--shadow-card)]"
       >
         <Search className="size-4 shrink-0 text-faint" />
         <span className={`min-w-0 flex-1 truncate text-base ${idle ? "text-faint" : ""}`}>{label}</span>
@@ -57,7 +68,7 @@ export function SearchLayer() {
 
   function close() {
     inputRef.current?.blur();
-    setSearchOpen(false);
+    requestBack();
   }
 
   function huntNow(q = query) {
